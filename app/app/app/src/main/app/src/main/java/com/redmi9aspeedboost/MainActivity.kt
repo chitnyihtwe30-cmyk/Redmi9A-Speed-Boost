@@ -1,4 +1,5 @@
 package com.redmi9aspeedboost
+
 import android.app.Activity
 import android.app.ActivityManager
 import android.content.Context
@@ -21,13 +22,19 @@ class MainActivity : Activity() {
     private lateinit var battery: TextView
     private lateinit var storage: TextView
     private lateinit var device: TextView
+    private lateinit var fakeRootStatus: TextView
+    private lateinit var appPowerButton: Button
 
     private var boostMode = 1
+    private var appEnabled = true
+    private var fakeRootEnabled = false
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         createUI()
         refreshInfo()
+        updatePowerUI()
+        updateFakeRootUI()
     }
 
     private fun createUI() {
@@ -36,7 +43,6 @@ class MainActivity : Activity() {
         val root = LinearLayout(this)
         root.orientation = LinearLayout.VERTICAL
         root.setPadding(24, 24, 24, 24)
-
         scroll.addView(root)
 
         val title = TextView(this)
@@ -45,6 +51,40 @@ class MainActivity : Activity() {
         title.gravity = Gravity.CENTER
         title.setPadding(0, 20, 0, 25)
         root.addView(title)
+
+        appPowerButton = Button(this)
+        appPowerButton.textSize = 18f
+        appPowerButton.setOnClickListener {
+            appEnabled = !appEnabled
+            updatePowerUI()
+            status.text = if (appEnabled) "BOOST APP: ON" else "BOOST APP: OFF"
+        }
+        root.addView(appPowerButton)
+
+        val fakeRootTitle = TextView(this)
+        fakeRootTitle.text = "FAKE ROOT STATUS"
+        fakeRootTitle.textSize = 20f
+        fakeRootTitle.setPadding(0, 18, 0, 5)
+        root.addView(fakeRootTitle)
+
+        fakeRootStatus = TextView(this)
+        fakeRootStatus.textSize = 17f
+        fakeRootStatus.gravity = Gravity.CENTER
+        fakeRootStatus.setPadding(0, 8, 0, 8)
+        root.addView(fakeRootStatus)
+
+        val fakeRootButton = Button(this)
+        fakeRootButton.text = "TOGGLE FAKE ROOT"
+        fakeRootButton.setOnClickListener {
+            fakeRootEnabled = !fakeRootEnabled
+            updateFakeRootUI()
+            status.text = if (fakeRootEnabled) {
+                "FAKE ROOT SIMULATION: ON"
+            } else {
+                "FAKE ROOT SIMULATION: OFF"
+            }
+        }
+        root.addView(fakeRootButton)
 
         status = TextView(this)
         status.text = "SYSTEM READY"
@@ -96,6 +136,7 @@ class MainActivity : Activity() {
         val mode1 = Button(this)
         mode1.text = "BOOST 1 - SAFE"
         mode1.setOnClickListener {
+            if (!appEnabled) return@setOnClickListener
             boostMode = 1
             status.text = "BOOST 1 SELECTED"
         }
@@ -104,6 +145,7 @@ class MainActivity : Activity() {
         val mode2 = Button(this)
         mode2.text = "BOOST 2 - PERFORMANCE"
         mode2.setOnClickListener {
+            if (!appEnabled) return@setOnClickListener
             boostMode = 2
             status.text = "BOOST 2 SELECTED"
         }
@@ -112,6 +154,7 @@ class MainActivity : Activity() {
         val mode3 = Button(this)
         mode3.text = "BOOST 3 - MAX SAFE"
         mode3.setOnClickListener {
+            if (!appEnabled) return@setOnClickListener
             boostMode = 3
             status.text = "BOOST 3 SELECTED"
         }
@@ -120,9 +163,13 @@ class MainActivity : Activity() {
         val boost = Button(this)
         boost.text = "BOOST PHONE"
         boost.textSize = 19f
-
         boost.setOnClickListener {
-            status.text = "BOOSTING..."
+            if (!appEnabled) {
+                status.text = "BOOST APP IS OFF"
+                return@setOnClickListener
+            }
+
+            status.text = "BOOSTING...\nMODE $boostMode"
 
             Thread {
                 try {
@@ -135,60 +182,43 @@ class MainActivity : Activity() {
                 runOnUiThread {
                     refreshInfo()
                     status.text = "BOOST COMPLETED\nMODE $boostMode"
-
-                    Toast.makeText(
-                        this,
-                        "Boost Completed",
-                        Toast.LENGTH_SHORT
-                    ).show()
+                    Toast.makeText(this, "Boost Completed", Toast.LENGTH_SHORT).show()
                 }
             }.start()
         }
-
         root.addView(boost)
 
         val optimize = Button(this)
         optimize.text = "RAM OPTIMIZE"
-
         optimize.setOnClickListener {
+            if (!appEnabled) {
+                status.text = "BOOST APP IS OFF"
+                return@setOnClickListener
+            }
             System.gc()
             refreshInfo()
-
             status.text = "RAM OPTIMIZATION COMPLETED"
-
-            Toast.makeText(
-                this,
-                "RAM Optimized",
-                Toast.LENGTH_SHORT
-            ).show()
+            Toast.makeText(this, "RAM Optimized", Toast.LENGTH_SHORT).show()
         }
-
         root.addView(optimize)
 
         val scan = Button(this)
         scan.text = "SCAN STORAGE / JUNK"
-
         scan.setOnClickListener {
+            if (!appEnabled) {
+                status.text = "BOOST APP IS OFF"
+                return@setOnClickListener
+            }
             try {
-                val stat = StatFs(
-                    Environment.getDataDirectory().path
-                )
-
+                val stat = StatFs(Environment.getDataDirectory().path)
                 val total = stat.totalBytes / 1073741824L
                 val free = stat.availableBytes / 1073741824L
                 val used = total - free
-
-                status.text =
-                    "STORAGE SCAN COMPLETED\n\n" +
-                    "USED: $used GB\n" +
-                    "FREE: $free GB\n" +
-                    "TOTAL: $total GB"
-
+                status.text = "STORAGE SCAN COMPLETED\n\nUSED: $used GB\nFREE: $free GB\nTOTAL: $total GB"
             } catch (_: Exception) {
                 status.text = "STORAGE SCAN FAILED"
             }
         }
-
         root.addView(scan)
 
         val deviceTitle = TextView(this)
@@ -202,97 +232,64 @@ class MainActivity : Activity() {
 
         val appInfo = Button(this)
         appInfo.text = "APP INFORMATION"
-
         appInfo.setOnClickListener {
-            status.text =
-                "APP NAME: Redmi 9A Speed Boost\n" +
-                "PACKAGE: com.redmi9aspeedboost\n" +
-                "VERSION: 1.0"
+            status.text = "APP NAME: Redmi 9A Speed Boost\nPACKAGE: com.redmi9aspeedboost\nVERSION: 1.0"
         }
-
         root.addView(appInfo)
 
         val security = Button(this)
         security.text = "SECURITY STATUS"
-
         security.setOnClickListener {
-            status.text =
-                "SECURITY STATUS\n\n" +
-                "ROOT: NOT REQUIRED\n" +
-                "SHIZUKU: OPTIONAL\n" +
-                "SYSTEM PROTECTION: ON"
+            status.text = "SECURITY STATUS\n\nROOT: NOT REQUIRED\nFAKE ROOT: SIMULATION ONLY\nSHIZUKU: OPTIONAL\nSYSTEM PROTECTION: ON"
         }
-
         root.addView(security)
 
         setContentView(scroll)
     }
 
+    private fun updatePowerUI() {
+        appPowerButton.text = if (appEnabled) "BOOST APP: ON" else "BOOST APP: OFF"
+    }
+
+    private fun updateFakeRootUI() {
+        fakeRootStatus.text = if (fakeRootEnabled) {
+            "🟢 FAKE ROOT: ON\n(Simulation only — no real root access)"
+        } else {
+            "⚪ FAKE ROOT: OFF\n(Simulation only)"
+        }
+    }
+
     private fun refreshInfo() {
-
         try {
-            val manager =
-                getSystemService(
-                    Context.ACTIVITY_SERVICE
-                ) as ActivityManager
-
+            val manager = getSystemService(Context.ACTIVITY_SERVICE) as ActivityManager
             val memory = ActivityManager.MemoryInfo()
             manager.getMemoryInfo(memory)
-
             val total = memory.totalMem / 1048576L
             val available = memory.availMem / 1048576L
             val used = total - available
-
-            ram.text =
-                "Used: $used MB\n" +
-                "Available: $available MB\n" +
-                "Total: $total MB"
-
+            ram.text = "Used: $used MB\nAvailable: $available MB\nTotal: $total MB"
         } catch (_: Exception) {
             ram.text = "RAM information unavailable"
         }
 
         try {
-            val batteryManager =
-                getSystemService(
-                    Context.BATTERY_SERVICE
-                ) as BatteryManager
-
-            val level =
-                batteryManager.getIntProperty(
-                    BatteryManager.BATTERY_PROPERTY_CAPACITY
-                )
-
+            val batteryManager = getSystemService(Context.BATTERY_SERVICE) as BatteryManager
+            val level = batteryManager.getIntProperty(BatteryManager.BATTERY_PROPERTY_CAPACITY)
             battery.text = "Battery Level: $level%"
-
         } catch (_: Exception) {
             battery.text = "Battery information unavailable"
         }
 
         try {
-            val stat =
-                StatFs(
-                    Environment.getDataDirectory().path
-                )
-
+            val stat = StatFs(Environment.getDataDirectory().path)
             val total = stat.totalBytes / 1073741824L
             val free = stat.availableBytes / 1073741824L
             val used = total - free
-
-            storage.text =
-                "Used: $used GB\n" +
-                "Free: $free GB\n" +
-                "Total: $total GB"
-
+            storage.text = "Used: $used GB\nFree: $free GB\nTotal: $total GB"
         } catch (_: Exception) {
             storage.text = "Storage information unavailable"
         }
 
-        device.text =
-            "Manufacturer: ${Build.MANUFACTURER}\n" +
-            "Model: ${Build.MODEL}\n" +
-            "Android: ${Build.VERSION.RELEASE}\n" +
-            "SDK: ${Build.VERSION.SDK_INT}\n" +
-            "CPU: ${Build.SUPPORTED_ABIS.firstOrNull() ?: "Unknown"}"
+        device.text = "Manufacturer: ${Build.MANUFACTURER}\nModel: ${Build.MODEL}\nAndroid: ${Build.VERSION.RELEASE}\nSDK: ${Build.VERSION.SDK_INT}\nCPU: ${Build.SUPPORTED_ABIS.firstOrNull() ?: "Unknown"}"
     }
 }
