@@ -9,14 +9,15 @@ import android.os.Bundle
 import android.os.Environment
 import android.os.StatFs
 import android.view.Gravity
+import android.widget.ArrayAdapter
 import android.widget.Button
 import android.widget.LinearLayout
 import android.widget.ScrollView
+import android.widget.Spinner
 import android.widget.TextView
 import android.widget.Toast
 
 class MainActivity : Activity() {
-
     private lateinit var status: TextView
     private lateinit var ram: TextView
     private lateinit var battery: TextView
@@ -24,6 +25,7 @@ class MainActivity : Activity() {
     private lateinit var device: TextView
     private lateinit var fakeRootStatus: TextView
     private lateinit var appPowerButton: Button
+    private lateinit var modeSelector: Spinner
 
     private var boostMode = 1
     private var appEnabled = true
@@ -39,7 +41,6 @@ class MainActivity : Activity() {
 
     private fun createUI() {
         val scroll = ScrollView(this)
-
         val root = LinearLayout(this)
         root.orientation = LinearLayout.VERTICAL
         root.setPadding(24, 24, 24, 24)
@@ -78,11 +79,7 @@ class MainActivity : Activity() {
         fakeRootButton.setOnClickListener {
             fakeRootEnabled = !fakeRootEnabled
             updateFakeRootUI()
-            status.text = if (fakeRootEnabled) {
-                "FAKE ROOT SIMULATION: ON"
-            } else {
-                "FAKE ROOT SIMULATION: OFF"
-            }
+            status.text = if (fakeRootEnabled) "FAKE ROOT SIMULATION: ON" else "FAKE ROOT SIMULATION: OFF"
         }
         root.addView(fakeRootButton)
 
@@ -105,7 +102,6 @@ class MainActivity : Activity() {
         ramTitle.text = "RAM STATUS"
         ramTitle.textSize = 20f
         root.addView(ramTitle)
-
         ram = TextView(this)
         ram.textSize = 16f
         root.addView(ram)
@@ -114,7 +110,6 @@ class MainActivity : Activity() {
         batteryTitle.text = "BATTERY"
         batteryTitle.textSize = 20f
         root.addView(batteryTitle)
-
         battery = TextView(this)
         battery.textSize = 16f
         root.addView(battery)
@@ -123,42 +118,30 @@ class MainActivity : Activity() {
         storageTitle.text = "STORAGE"
         storageTitle.textSize = 20f
         root.addView(storageTitle)
-
         storage = TextView(this)
         storage.textSize = 16f
         root.addView(storage)
 
         val modeTitle = TextView(this)
-        modeTitle.text = "BOOST MODE"
+        modeTitle.text = "BOOST MODE - SELECT"
         modeTitle.textSize = 20f
+        modeTitle.setPadding(0, 18, 0, 5)
         root.addView(modeTitle)
 
-        val mode1 = Button(this)
-        mode1.text = "BOOST 1 - SAFE"
-        mode1.setOnClickListener {
-            if (!appEnabled) return@setOnClickListener
-            boostMode = 1
-            status.text = "BOOST 1 SELECTED"
-        }
-        root.addView(mode1)
-
-        val mode2 = Button(this)
-        mode2.text = "BOOST 2 - PERFORMANCE"
-        mode2.setOnClickListener {
-            if (!appEnabled) return@setOnClickListener
-            boostMode = 2
-            status.text = "BOOST 2 SELECTED"
-        }
-        root.addView(mode2)
-
-        val mode3 = Button(this)
-        mode3.text = "BOOST 3 - MAX SAFE"
-        mode3.setOnClickListener {
-            if (!appEnabled) return@setOnClickListener
-            boostMode = 3
-            status.text = "BOOST 3 SELECTED"
-        }
-        root.addView(mode3)
+        modeSelector = Spinner(this)
+        val modes = arrayOf("SAFE", "PERFORMANCE", "MAX SAFE")
+        val adapter = ArrayAdapter(this, android.R.layout.simple_spinner_item, modes)
+        adapter.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item)
+        modeSelector.adapter = adapter
+        modeSelector.setSelection(0)
+        modeSelector.setOnItemSelectedListener(object : android.widget.AdapterView.OnItemSelectedListener {
+            override fun onItemSelected(parent: android.widget.AdapterView<*>?, view: android.view.View?, position: Int, id: Long) {
+                boostMode = position + 1
+                status.text = "SELECTED: ${modes[position]}"
+            }
+            override fun onNothingSelected(parent: android.widget.AdapterView<*>?) {}
+        })
+        root.addView(modeSelector)
 
         val boost = Button(this)
         boost.text = "BOOST PHONE"
@@ -168,21 +151,15 @@ class MainActivity : Activity() {
                 status.text = "BOOST APP IS OFF"
                 return@setOnClickListener
             }
-
-            status.text = "BOOSTING...\nMODE $boostMode"
-
+            val selected = modes[boostMode - 1]
+            status.text = "BOOSTING...\nMODE $boostMode - $selected"
             Thread {
-                try {
-                    Thread.sleep(1500)
-                } catch (_: Exception) {
-                }
-
+                try { Thread.sleep(1500) } catch (_: Exception) {}
                 System.gc()
-
                 runOnUiThread {
                     refreshInfo()
-                    status.text = "BOOST COMPLETED\nMODE $boostMode"
-                    Toast.makeText(this, "Boost Completed", Toast.LENGTH_SHORT).show()
+                    status.text = "BOOST COMPLETED\nMODE $boostMode - $selected"
+                    Toast.makeText(this, "Boost Completed - $selected", Toast.LENGTH_SHORT).show()
                 }
             }.start()
         }
@@ -225,7 +202,6 @@ class MainActivity : Activity() {
         deviceTitle.text = "DEVICE INFORMATION"
         deviceTitle.textSize = 20f
         root.addView(deviceTitle)
-
         device = TextView(this)
         device.textSize = 16f
         root.addView(device)
@@ -271,7 +247,6 @@ class MainActivity : Activity() {
         } catch (_: Exception) {
             ram.text = "RAM information unavailable"
         }
-
         try {
             val batteryManager = getSystemService(Context.BATTERY_SERVICE) as BatteryManager
             val level = batteryManager.getIntProperty(BatteryManager.BATTERY_PROPERTY_CAPACITY)
@@ -279,7 +254,6 @@ class MainActivity : Activity() {
         } catch (_: Exception) {
             battery.text = "Battery information unavailable"
         }
-
         try {
             val stat = StatFs(Environment.getDataDirectory().path)
             val total = stat.totalBytes / 1073741824L
@@ -289,7 +263,6 @@ class MainActivity : Activity() {
         } catch (_: Exception) {
             storage.text = "Storage information unavailable"
         }
-
         device.text = "Manufacturer: ${Build.MANUFACTURER}\nModel: ${Build.MODEL}\nAndroid: ${Build.VERSION.RELEASE}\nSDK: ${Build.VERSION.SDK_INT}\nCPU: ${Build.SUPPORTED_ABIS.firstOrNull() ?: "Unknown"}"
     }
 }
