@@ -1,0 +1,26 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Redmi 9A Speed Boost Preview</title>
+<style>
+body{margin:0;background:#101114;color:#fff;font-family:Arial,sans-serif}.app{max-width:430px;margin:auto;padding:18px}.card{background:#1b1d22;border-radius:16px;padding:16px;margin:12px 0}.title{text-align:center;font-size:25px;font-weight:800}.sub{text-align:center;color:#aaa;margin:5px 0 18px}.row{display:flex;justify-content:space-between;align-items:center;margin:12px 0}.value{color:#58d68d;font-weight:700}.btn,select{width:100%;box-sizing:border-box;border:0;border-radius:12px;padding:14px;background:#2d3138;color:#fff;font-size:16px;font-weight:700;margin-top:8px}.main{background:#1976d2}.danger{background:#9b2c2c}.status{text-align:center;font-weight:700;padding:12px;border-radius:10px;background:#22262c}.switch{width:54px;height:30px;border-radius:20px;background:#555;position:relative;cursor:pointer}.switch:after{content:'';position:absolute;width:24px;height:24px;top:3px;left:3px;background:#fff;border-radius:50%;transition:.2s}.switch.on{background:#159447}.switch.on:after{left:27px}.small{font-size:13px;color:#aaa}.grid{display:grid;grid-template-columns:1fr 1fr;gap:10px}.grid .card{margin:0}.result{color:#8be9aa;margin-top:10px;text-align:center;min-height:20px}
+</style></head>
+<body><div class="app">
+<div class="title">REDMI 9A SPEED BOOST</div><div class="sub">Preview — no installation needed</div>
+<div class="card"><div class="row"><b>BOOST APP</b><div id="appSwitch" class="switch on" onclick="toggleApp()"></div></div><div id="appState" class="status">APP ON</div></div>
+<div class="card"><div class="row"><div><b>FAKE ROOT STATUS</b><div class="small">Simulation only — no real root</div></div><div id="rootSwitch" class="switch" onclick="toggleRoot()"></div></div><div id="rootState" class="status">ROOT: OFF</div></div>
+<div class="card"><div id="system" class="status">SYSTEM READY</div><button class="btn" onclick="refresh()">REFRESH PHONE STATUS</button></div>
+<div class="grid"><div class="card"><b>RAM</b><div class="value">1.8 / 2.0 GB</div></div><div class="card"><b>BATTERY</b><div class="value">78%</div></div><div class="card"><b>STORAGE</b><div class="value">18 / 32 GB</div></div><div class="card"><b>SECURITY</b><div class="value">SAFE</div></div></div>
+<div class="card"><b>BOOST MODE — SELECT</b><select id="mode"><option>SAFE</option><option>PERFORMANCE</option><option>MAX SAFE</option></select><button class="btn main" onclick="boost()">BOOST PHONE</button><div id="boostResult" class="result"></div></div>
+<div class="card"><button class="btn" onclick="optimize()">RAM OPTIMIZE</button><button class="btn" onclick="scan()">SCAN STORAGE / JUNK</button><div id="result" class="result"></div></div>
+<div class="card"><b>DEVICE INFORMATION</b><p class="small">Redmi 9A • Android • Preview data</p><b>APP INFORMATION</b><p class="small">Redmi 9A Speed Boost • Free</p><b>SECURITY STATUS</b><p class="value">No real root / No bypass / Safe simulation</p></div>
+</div>
+<script>
+function toggleApp(){let e=document.getElementById('appSwitch');e.classList.toggle('on');document.getElementById('appState').textContent=e.classList.contains('on')?'APP ON':'APP OFF'}
+function toggleRoot(){let e=document.getElementById('rootSwitch');e.classList.toggle('on');document.getElementById('rootState').textContent=e.classList.contains('on')?'ROOT: ON (FAKE)':'ROOT: OFF'}
+function refresh(){document.getElementById('system').textContent='PHONE STATUS REFRESHED ✓'}
+function boost(){let m=document.getElementById('mode').value;document.getElementById('boostResult').textContent='BOOST COMPLETED — '+m}
+function optimize(){document.getElementById('result').textContent='RAM OPTIMIZE COMPLETED ✓ (preview)'}
+function scan(){document.getElementById('result').textContent='SCAN COMPLETED — JUNK CHECKED ✓'}
+</script></body></html>
