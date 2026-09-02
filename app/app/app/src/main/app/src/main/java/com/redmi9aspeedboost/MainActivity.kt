@@ -58,14 +58,14 @@ class MainActivity : Activity() {
 
     private fun addText(root: LinearLayout, value: String, size: Float, color: Int = text, bold: Boolean = false) {
         root.addView(TextView(this).apply {
-            text = value; textSize = size; setTextColor(color); setPadding(0, 2, 0, 2)
+            this.text = value; textSize = size; setTextColor(color); setPadding(0, 2, 0, 2)
             if (bold) setTypeface(typeface, Typeface.BOLD)
         })
     }
 
     private fun section(root: LinearLayout, title: String) {
         root.addView(TextView(this).apply {
-            text = title; textSize = 12f; setTextColor(muted); setTypeface(typeface, Typeface.BOLD)
+            this.text = title; textSize = 12f; setTextColor(muted); setTypeface(typeface, Typeface.BOLD)
             setPadding(5, 18, 5, 7)
         })
     }
@@ -76,7 +76,7 @@ class MainActivity : Activity() {
     }
 
     private fun makeButton(label: String, color: Int = card2, size: Float = 15f): Button = Button(this).apply {
-        text = label; textSize = size; setTextColor(text); isAllCaps = false; background = rounded(color, 16f)
+        this.text = label; textSize = size; setTextColor(this@MainActivity.text); isAllCaps = false; background = rounded(color, 16f)
         stateListAnimator = null; setPadding(12, 8, 12, 8); marginView(this, 5, 5)
     }
 
@@ -89,14 +89,14 @@ class MainActivity : Activity() {
             orientation = LinearLayout.VERTICAL; gravity = Gravity.CENTER; setPadding(18, 24, 18, 24)
             background = rounded(Color.rgb(13, 29, 43), 26f, Color.rgb(47, 117, 150)); marginView(this, 0, 10)
         }
-        hero.addView(TextView(this).apply { text = "⚡"; textSize = 32f; gravity = Gravity.CENTER })
+        hero.addView(TextView(this).apply { this.text = "⚡"; textSize = 32f; gravity = Gravity.CENTER })
         hero.addView(TextView(this).apply {
-            text = "REDMI 9A"; textSize = 28f; setTextColor(text); gravity = Gravity.CENTER; setTypeface(typeface, Typeface.BOLD)
+            this.text = "REDMI 9A"; textSize = 28f; setTextColor(this@MainActivity.text); gravity = Gravity.CENTER; setTypeface(typeface, Typeface.BOLD)
         })
         hero.addView(TextView(this).apply {
-            text = "SPEED BOOST"; textSize = 20f; setTextColor(accent); gravity = Gravity.CENTER; setTypeface(typeface, Typeface.BOLD)
+            this.text = "SPEED BOOST"; textSize = 20f; setTextColor(accent); gravity = Gravity.CENTER; setTypeface(typeface, Typeface.BOLD)
         })
-        hero.addView(TextView(this).apply { text = "PREMIUM • SMART • NON-ROOT"; textSize = 10f; setTextColor(muted); gravity = Gravity.CENTER; setPadding(0, 6, 0, 0) })
+        hero.addView(TextView(this).apply { this.text = "PREMIUM • SMART • NON-ROOT"; textSize = 10f; setTextColor(muted); gravity = Gravity.CENTER; setPadding(0, 6, 0, 0) })
         root.addView(hero)
 
         appPowerButton = makeButton("🟢  BOOST APP  •  ON", Color.rgb(20, 88, 66), 17f)
@@ -105,7 +105,7 @@ class MainActivity : Activity() {
 
         val statusCard = makeCard()
         status = TextView(this).apply {
-            text = "● SYSTEM READY"; textSize = 15f; gravity = Gravity.CENTER; setTextColor(accent); setPadding(8, 13, 8, 13)
+            this.text = "● SYSTEM READY"; textSize = 15f; gravity = Gravity.CENTER; setTextColor(accent); setPadding(8, 13, 8, 13)
             background = rounded(Color.rgb(10, 35, 31), 15f)
         }
         statusCard.addView(status)
@@ -162,7 +162,7 @@ class MainActivity : Activity() {
         security.setOnClickListener { status.text = "SECURITY STATUS\n\nROOT: NOT REQUIRED\nFAKE ROOT: SIMULATION ONLY\nSYSTEM PROTECTION: ON\nNO SECURITY BYPASS" }; deviceCard.addView(security); root.addView(deviceCard)
 
         root.addView(TextView(this).apply {
-            text = "✓ SAFE NON-ROOT OPTIMIZATION\nSystem RAM/kernel settings cannot be changed without privileged access."
+            this.text = "✓ SAFE NON-ROOT OPTIMIZATION\nSystem RAM/kernel settings cannot be changed without privileged access."
             textSize = 11f; setTextColor(muted); gravity = Gravity.CENTER; setPadding(8, 16, 8, 8)
         })
         setContentView(scroll)
@@ -171,8 +171,8 @@ class MainActivity : Activity() {
     private fun addMiniCard(row: LinearLayout, icon: String, label: String, assign: (TextView) -> Unit) {
         val box = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL; gravity = Gravity.CENTER; setPadding(6, 13, 6, 13); background = rounded(card, 18f) }
         box.layoutParams = LinearLayout.LayoutParams(0, -2, 1f).apply { setMargins(3, 3, 3, 3) }
-        box.addView(TextView(this).apply { text = icon; textSize = 21f; gravity = Gravity.CENTER })
-        box.addView(TextView(this).apply { text = label; textSize = 9f; setTextColor(muted); gravity = Gravity.CENTER; setTypeface(typeface, Typeface.BOLD) })
+        box.addView(TextView(this).apply { this.text = icon; textSize = 21f; gravity = Gravity.CENTER })
+        box.addView(TextView(this).apply { this.text = label; textSize = 9f; setTextColor(muted); gravity = Gravity.CENTER; setTypeface(typeface, Typeface.BOLD) })
         val value = TextView(this).apply { textSize = 11f; setTextColor(accent); gravity = Gravity.CENTER; setPadding(0, 5, 0, 0) }
         box.addView(value); assign(value); row.addView(box)
     }
