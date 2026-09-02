@@ -13,4 +13,12 @@ android {
         versionCode 1
         versionName "1.0"
     }
+
+    sourceSets {
+        main {
+            manifest.srcFile 'app/app/src/main/AndroidManifest.xml'
+            java.srcDirs = ['app/app/src/main/java']
+            res.srcDirs = ['app/app/src/main/res']
+        }
+    }
 }
