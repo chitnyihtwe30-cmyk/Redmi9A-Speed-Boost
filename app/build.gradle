@@ -1,3 +1,4 @@
+```gradle
 plugins {
     id 'com.android.application'
     id 'org.jetbrains.kotlin.android' version '2.0.21'
@@ -10,7 +11,7 @@ android {
     defaultConfig {
         applicationId "com.redmi9aspeedboost"
         minSdk 29
-        targetSdk 29
+        targetSdk 35
         versionCode 1
         versionName "1.0"
     }
@@ -31,4 +32,14 @@ android {
             res.srcDirs = ['app/app/src/main/res']
         }
     }
+
+    buildFeatures {
+        buildConfig true
+    }
 }
+
+dependencies {
+    implementation "dev.rikka.shizuku:api:13.1.5"
+    implementation "dev.rikka.shizuku:provider:13.1.5"
+}
+```
