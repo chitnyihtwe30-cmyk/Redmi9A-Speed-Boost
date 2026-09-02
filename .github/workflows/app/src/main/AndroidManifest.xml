@@ -2,15 +2,16 @@
 
 <manifest xmlns:android="http://schemas.android.com/apk/res/android">
 
-    <!-- Allow the app to stop its own/background processes where Android permits -->
-    <uses-permission android:name="android.permission.KILL_BACKGROUND_PROCESSES" />
+    <!-- Allow the app to request stopping background processes -->
+    <uses-permission
+        android:name="android.permission.KILL_BACKGROUND_PROCESSES" />
 
-    <!-- Android 13+ notification permission -->
-    <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
+    <!-- Required when posting notifications on Android 13+ -->
+    <uses-permission
+        android:name="android.permission.POST_NOTIFICATIONS" />
 
     <application
         android:allowBackup="false"
-        android:icon="@mipmap/ic_launcher"
         android:label="Redmi 9A Speed Boost"
         android:supportsRtl="true"
         android:theme="@style/AppTheme">
@@ -20,11 +21,8 @@
             android:exported="true">
 
             <intent-filter>
-
                 <action android:name="android.intent.action.MAIN" />
-
                 <category android:name="android.intent.category.LAUNCHER" />
-
             </intent-filter>
 
         </activity>
