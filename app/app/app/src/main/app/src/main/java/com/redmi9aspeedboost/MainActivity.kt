@@ -189,10 +189,10 @@ class MainActivity : Activity() {
         )
 
         // PROGRESS
-        progressBar = ProgressBar(this)
-        progressBar.max = 100
-        progressBar.progress = 0
-
+       progressBar = ProgressBar(this)
+progressBar.isIndeterminate = false
+progressBar.max = 100
+progressBar.progress = 0
         root.addView(progressBar)
 
         setContentView(root)
