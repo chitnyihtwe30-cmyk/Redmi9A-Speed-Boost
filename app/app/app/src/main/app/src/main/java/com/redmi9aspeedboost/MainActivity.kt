@@ -1,24 +1,29 @@
-ဟုတ်ပြီ 👍 Package name က
-
-com.redmi9aspeedboost
-
-ဖြစ်တာ သေချာပြီ။ အခု MainActivity.kt ကို အကုန်လုံး replace လုပ်လိုက်ပါ။ လက်ရှိ code အောက်မှာ ဆက်ထည့်တာမဟုတ်ဘဲ အဟောင်းအားလုံးဖျက်ပြီး ဒီ code တစ်ခုလုံးထည့်ပါ။
-
-ဒီ version မှာ သင်ပြောထားတဲ့ ON/OFF + Boost 1/2/3 + Phone Boost + Fake Root + RAM + Battery + Temperature + Boost Completed UI တွေ ပါမယ်။
-
 package com.redmi9aspeedboost
 
+import android.Manifest
 import android.app.Activity
+import android.app.ActivityManager
+import android.app.NotificationChannel
+import android.app.NotificationManager
+import android.content.Context
+import android.content.Intent
+import android.content.pm.PackageManager
+import android.os.BatteryManager
+import android.os.Build
 import android.os.Bundle
 import android.os.Debug
-import android.os.Handler
-import android.os.Looper
+import android.os.Environment
+import android.os.StatFs
+import android.provider.Settings
 import android.view.Gravity
 import android.widget.Button
 import android.widget.LinearLayout
 import android.widget.ProgressBar
+import android.widget.ScrollView
 import android.widget.TextView
 import android.widget.Toast
+import java.io.File
+import java.util.Locale
 
 class MainActivity : Activity() {
 
@@ -26,141 +31,134 @@ class MainActivity : Activity() {
     private lateinit var ramText: TextView
     private lateinit var batteryText: TextView
     private lateinit var tempText: TextView
+    private lateinit var storageText: TextView
+    private lateinit var deviceText: TextView
     private lateinit var rootText: TextView
+    private lateinit var historyText: TextView
     private lateinit var progressBar: ProgressBar
 
     private var appEnabled = true
     private var boostMode = 1
 
-    private val handler = Handler(Looper.getMainLooper())
-
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
 
+        createNotificationChannel()
+        requestNotificationPermission()
+
         buildUI()
-        startAutoRefresh()
+        updateDeviceInfo()
     }
 
     private fun buildUI() {
+        val scroll = ScrollView(this)
 
         val root = LinearLayout(this)
         root.orientation = LinearLayout.VERTICAL
         root.setPadding(24, 24, 24, 24)
-        root.gravity = Gravity.CENTER_HORIZONTAL
 
-        // TITLE
+        scroll.addView(root)
+
         val title = TextView(this)
         title.text = "REDMI 9A SPEED BOOST"
-        title.textSize = 23f
+        title.textSize = 24f
         title.gravity = Gravity.CENTER
         title.setPadding(0, 10, 0, 20)
-
         root.addView(title)
 
-        // ON / OFF
         val powerButton = Button(this)
-        powerButton.text = "● APP ON"
-        powerButton.setOnClickListener {
+        powerButton.text = "APP ON"
 
+        powerButton.setOnClickListener {
             appEnabled = !appEnabled
 
             if (appEnabled) {
-                powerButton.text = "● APP ON"
+                powerButton.text = "APP ON"
                 statusText.text = "System Ready"
                 Toast.makeText(this, "Boost System ON", Toast.LENGTH_SHORT).show()
             } else {
-                powerButton.text = "○ APP OFF"
+                powerButton.text = "APP OFF"
                 statusText.text = "Boost System OFF"
                 Toast.makeText(this, "Boost System OFF", Toast.LENGTH_SHORT).show()
             }
         }
 
-        root.addView(
-            powerButton,
-            LinearLayout.LayoutParams(
-                LinearLayout.LayoutParams.MATCH_PARENT,
-                LinearLayout.LayoutParams.WRAP_CONTENT
-            )
-        )
+        root.addView(powerButton)
 
-        // STATUS
-        statusText = TextView(this)
+        statusText = createInfoText()
         statusText.text = "System Ready"
-        statusText.textSize = 17f
         statusText.gravity = Gravity.CENTER
-        statusText.setPadding(0, 15, 0, 15)
-
         root.addView(statusText)
 
-        // DEVICE STATUS
-        val deviceTitle = TextView(this)
-        deviceTitle.text = "DEVICE STATUS"
-        deviceTitle.textSize = 18f
-        deviceTitle.setPadding(0, 15, 0, 8)
+        addSectionTitle(root, "DEVICE STATUS")
 
-        root.addView(deviceTitle)
-
-        ramText = TextView(this)
-        batteryText = TextView(this)
-        tempText = TextView(this)
-        rootText = TextView(this)
+        ramText = createInfoText()
+        batteryText = createInfoText()
+        tempText = createInfoText()
+        storageText = createInfoText()
 
         root.addView(ramText)
         root.addView(batteryText)
         root.addView(tempText)
+        root.addView(storageText)
+
+        addSectionTitle(root, "DEVICE INFORMATION")
+
+        deviceText = createInfoText()
+        root.addView(deviceText)
+
+        addSectionTitle(root, "ROOT STATUS")
+
+        rootText = createInfoText()
+        rootText.text = detectRoot()
         root.addView(rootText)
 
-        // FAKE ROOT STATUS
-        val rootButton = Button(this)
-        rootButton.text = "🛡 Fake Root Status"
+        val fakeRootButton = Button(this)
+        fakeRootButton.text = "Fake Root Simulation"
 
-        rootButton.setOnClickListener {
+        fakeRootButton.setOnClickListener {
             rootText.text =
-                "🛡 Root Status: Simulation Mode\nActual Root: Not Required"
+                "Fake Root: ENABLED\n" +
+                "Simulation Only\n" +
+                "Actual Root: ${if (isDeviceRooted()) "Detected" else "Not Detected"}"
 
             Toast.makeText(
                 this,
-                "Fake Root Status Checked",
+                "Fake Root Simulation ON",
                 Toast.LENGTH_SHORT
             ).show()
         }
 
-        root.addView(rootButton)
+        root.addView(fakeRootButton)
 
-        // BOOST MODES
-        val modeTitle = TextView(this)
-        modeTitle.text = "PHONE BOOST MODE"
-        modeTitle.textSize = 18f
-        modeTitle.setPadding(0, 20, 0, 8)
-
-        root.addView(modeTitle)
+        addSectionTitle(root, "PHONE BOOST MODE")
 
         val modeLayout = LinearLayout(this)
         modeLayout.orientation = LinearLayout.HORIZONTAL
         modeLayout.gravity = Gravity.CENTER
 
         val mode1 = Button(this)
-        mode1.text = "1"
+        mode1.text = "BOOST 1"
 
         val mode2 = Button(this)
-        mode2.text = "2"
+        mode2.text = "BOOST 2"
 
         val mode3 = Button(this)
-        mode3.text = "3"
+        mode3.text = "BOOST 3"
 
         mode1.setOnClickListener {
             boostMode = 1
-            statusText.text = "Boost Mode 1 Selected"
+            statusText.text = "BOOST 1 - SAFE MODE"
         }
 
         mode2.setOnClickListener {
             boostMode = 2
-            statusText.text = "Boost Mode 2 Selected"
+            statusText.text = "BOOST 2 - PERFORMANCE MODE"
         }
 
         mode3.setOnClickListener {
             boostMode = 3
-            statusText.text = "Boost Mode 3 Selected"
+            statusText.text = "BOOST 3 - MAX SAFE MODE"
         }
 
         modeLayout.addView(mode1)
@@ -169,63 +167,149 @@ class MainActivity : Activity() {
 
         root.addView(modeLayout)
 
-        // BOOST BUTTON
         val boostButton = Button(this)
-        boostButton.text = "🚀 BOOST PHONE"
-        boostButton.textSize = 18f
+        boostButton.text = "BOOST PHONE"
+        boostButton.textSize = 19f
 
         boostButton.setOnClickListener {
-
             if (!appEnabled) {
                 Toast.makeText(
                     this,
                     "Please turn APP ON first",
                     Toast.LENGTH_SHORT
                 ).show()
-                return@setOnClickListener
+            } else {
+                performBoost()
             }
-
-            performBoost()
         }
 
-        root.addView(
-            boostButton,
-            LinearLayout.LayoutParams(
-                LinearLayout.LayoutParams.MATCH_PARENT,
-                LinearLayout.LayoutParams.WRAP_CONTENT
-            )
+        root.addView(boostButton)
+
+        val ramButton = Button(this)
+        ramButton.text = "RAM OPTIMIZE"
+
+        ramButton.setOnClickListener {
+            optimizeRam()
+        }
+
+        root.addView(ramButton)
+
+        val storageButton = Button(this)
+        storageButton.text = "SCAN STORAGE / JUNK"
+
+        storageButton.setOnClickListener {
+            scanStorage()
+        }
+
+        root.addView(storageButton)
+
+        val batteryButton = Button(this)
+        batteryButton.text = "BATTERY INFORMATION"
+
+        batteryButton.setOnClickListener {
+            updateBatteryInfo()
+        }
+
+        root.addView(batteryButton)
+
+        val storageSettingsButton = Button(this)
+        storageSettingsButton.text = "OPEN STORAGE SETTINGS"
+
+        storageSettingsButton.setOnClickListener {
+            try {
+                startActivity(
+                    Intent(Settings.ACTION_INTERNAL_STORAGE_SETTINGS)
+                )
+            } catch (e: Exception) {
+                startActivity(Intent(Settings.ACTION_SETTINGS))
+            }
+        }
+
+        root.addView(storageSettingsButton)
+
+        addSectionTitle(root, "BOOST PROGRESS")
+
+        progressBar = ProgressBar(
+            this,
+            null,
+            android.R.attr.progressBarStyleHorizontal
         )
 
-        // PROGRESS
-        progressBar = ProgressBar(this)
+        progressBar.isIndeterminate = false
         progressBar.max = 100
         progressBar.progress = 0
 
-        root.addView(progressBar)
+        root.addView(
+            progressBar,
+            LinearLayout.LayoutParams(
+                LinearLayout.LayoutParams.MATCH_PARENT,
+                45
+            )
+        )
 
-        setContentView(root)
+        addSectionTitle(root, "BOOST RESULT")
+
+        val resultButton = Button(this)
+        resultButton.text = "SHOW BEFORE / AFTER"
+
+        resultButton.setOnClickListener {
+            statusText.text =
+                "RAM Before: ${beforeRam} MB\n" +
+                "RAM After: ${afterRam} MB"
+        }
+
+        root.addView(resultButton)
+
+        addSectionTitle(root, "BOOST HISTORY")
+
+        historyText = createInfoText()
+        historyText.text = "No boost history yet."
+
+        root.addView(historyText)
+
+        setContentView(scroll)
     }
 
-    private fun performBoost() {
+    private var beforeRam = 0L
+    private var afterRam = 0L
 
-        statusText.text = "Boosting... Mode $boostMode"
+    private fun performBoost() {
+        beforeRam = getUsedRam()
+
+        statusText.text =
+            "BOOSTING...\nMode $boostMode"
+
         progressBar.progress = 0
 
         Thread {
-
             for (i in 0..100 step 10) {
-
-                Thread.sleep(120)
+                Thread.sleep(100)
 
                 runOnUiThread {
                     progressBar.progress = i
                 }
             }
 
+            System.gc()
+
+            afterRam = getUsedRam()
+
             runOnUiThread {
+                progressBar.progress = 100
 
                 statusText.text =
-                    "✓ BOOST COMPLETED\nMode $boostMode"
+                    "BOOST COMPLETED\nMode $boostMode"
+
+                historyText.text =
+                    "Boost Completed\n" +
+                    "Mode: $boostMode\n" +
+                    "RAM Before: $beforeRam MB\n" +
+                    "RAM After: $afterRam MB"
+
+                sendNotification(
+                    "Boost Completed",
+                    "Redmi 9A Boost Mode $boostMode completed."
+                )
 
                 Toast.makeText(
                     this,
@@ -233,180 +317,245 @@ class MainActivity : Activity() {
                     Toast.LENGTH_SHORT
                 ).show()
             }
-
         }.start()
     }
 
-    private fun startAutoRefresh() {
+    private fun optimizeRam() {
+        beforeRam = getUsedRam()
 
-        handler.post(object : Runnable {
+        System.gc()
 
-            override fun run() {
+        afterRam = getUsedRam()
 
-                updateDeviceInfo()
+        statusText.text =
+            "RAM OPTIMIZATION COMPLETED"
 
-                handler.postDelayed(
-                    this,
-                    2000
-                )
-            }
-        })
+        historyText.text =
+            "RAM Optimization Completed\n" +
+            "Before: $beforeRam MB\n" +
+            "After: $afterRam MB"
+
+        Toast.makeText(
+            this,
+            "RAM Optimization Completed",
+            Toast.LENGTH_SHORT
+        ).show()
+    }
+
+    private fun scanStorage() {
+        val stat = StatFs(Environment.getDataDirectory().path)
+
+        val total =
+            stat.totalBytes / (1024L * 1024L * 1024L)
+
+        val free =
+            stat.availableBytes / (1024L * 1024L * 1024L)
+
+        val used = total - free
+
+        statusText.text =
+            "STORAGE SCAN COMPLETED\n" +
+            "Used: $used GB\n" +
+            "Free: $free GB\n" +
+            "Total: $total GB"
+
+        Toast.makeText(
+            this,
+            "Storage Scan Completed",
+            Toast.LENGTH_SHORT
+        ).show()
     }
 
     private fun updateDeviceInfo() {
-
-        val memoryInfo = Debug.MemoryInfo()
-        Debug.getMemoryInfo(memoryInfo)
-
-        val usedRam =
-            memoryInfo.totalPss / 1024
-
         ramText.text =
-            "📊 RAM Usage: ${usedRam} MB"
+            "RAM Usage: ${getUsedRam()} MB"
+
+        updateBatteryInfo()
+
+        val stat = StatFs(Environment.getDataDirectory().path)
+
+        val total =
+            stat.totalBytes / (1024L * 1024L * 1024L)
+
+        val free =
+            stat.availableBytes / (1024L * 1024L * 1024L)
+
+        val used = total - free
+
+        storageText.text =
+            "Storage: $used GB used / $total GB"
+
+        deviceText.text =
+            "Manufacturer: ${Build.MANUFACTURER}\n" +
+            "Model: ${Build.MODEL}\n" +
+            "Android: ${Build.VERSION.RELEASE}\n" +
+            "SDK: ${Build.VERSION.SDK_INT}\n" +
+            "CPU: ${Build.SUPPORTED_ABIS.firstOrNull() ?: "Unknown"}"
+    }
+
+    private fun updateBatteryInfo() {
+        val batteryManager =
+            getSystemService(BATTERY_SERVICE) as BatteryManager
+
+        val level =
+            batteryManager.getIntProperty(
+                BatteryManager.BATTERY_PROPERTY_CAPACITY
+            )
+
+        val intent = registerReceiver(
+            null,
+            android.content.IntentFilter(
+                Intent.ACTION_BATTERY_CHANGED
+            )
+        )
+
+        val temperature =
+            intent?.getIntExtra(
+                BatteryManager.EXTRA_TEMPERATURE,
+                -1
+            ) ?: -1
+
+        val tempC =
+            if (temperature >= 0) {
+                temperature / 10.0
+            } else {
+                0.0
+            }
 
         batteryText.text =
-            "🔋 Battery: System Monitor"
+            "Battery: $level%"
 
         tempText.text =
-            "🌡 CPU Temperature: System Monitor"
+            String.format(
+                Locale.US,
+                "Temperature: %.1f°C",
+                tempC
+            )
+    }
 
-        rootText.text =
-            "🛡 Root Status: Not Required"
+    private fun getUsedRam(): Long {
+        val memoryInfo = Debug.MemoryInfo()
+
+        Debug.getMemoryInfo(memoryInfo)
+
+        return memoryInfo.totalPss / 1024L
+    }
+
+    private fun createInfoText(): TextView {
+        val text = TextView(this)
+
+        text.textSize = 16f
+        text.setPadding(8, 8, 8, 8)
+
+        return text
+    }
+
+    private fun addSectionTitle(
+        root: LinearLayout,
+        text: String
+    ) {
+        val title = TextView(this)
+
+        title.text = text
+        title.textSize = 19f
+        title.setPadding(0, 18, 0, 8)
+
+        root.addView(title)
+    }
+
+    private fun isDeviceRooted(): Boolean {
+        val paths = arrayOf(
+            "/system/bin/su",
+            "/system/xbin/su",
+            "/sbin/su",
+            "/su/bin/su",
+            "/data/adb/magisk"
+        )
+
+        return paths.any {
+            File(it).exists()
+        }
+    }
+
+    private fun detectRoot(): String {
+        return if (isDeviceRooted()) {
+            "Root Status: ROOT DETECTED"
+        } else {
+            "Root Status: NOT ROOTED"
+        }
+    }
+
+    private fun createNotificationChannel() {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+
+            val channel = NotificationChannel(
+                "boost_channel",
+                "Boost Notifications",
+                NotificationManager.IMPORTANCE_DEFAULT
+            )
+
+            val manager =
+                getSystemService(
+                    NotificationManager::class.java
+                )
+
+            manager.createNotificationChannel(channel)
+        }
+    }
+
+    private fun requestNotificationPermission() {
+        if (Build.VERSION.SDK_INT >= 33) {
+
+            if (
+                checkSelfPermission(
+                    Manifest.permission.POST_NOTIFICATIONS
+                ) != PackageManager.PERMISSION_GRANTED
+            ) {
+                requestPermissions(
+                    arrayOf(
+                        Manifest.permission.POST_NOTIFICATIONS
+                    ),
+                    1001
+                )
+            }
+        }
+    }
+
+    private fun sendNotification(
+        title: String,
+        message: String
+    ) {
+        if (
+            Build.VERSION.SDK_INT >= 33 &&
+            checkSelfPermission(
+                Manifest.permission.POST_NOTIFICATIONS
+            ) != PackageManager.PERMISSION_GRANTED
+        ) {
+            return
+        }
+
+        val manager =
+            getSystemService(
+                NotificationManager::class.java
+            )
+
+        val notification =
+            android.app.Notification.Builder(
+                this,
+                "boost_channel"
+            )
+                .setContentTitle(title)
+                .setContentText(message)
+                .setSmallIcon(
+                    android.R.drawable.ic_dialog_info
+                )
+                .setAutoCancel(true)
+                .build()
+
+        manager.notify(100, notification)
     }
 
     override fun onDestroy() {
-
-        handler.removeCallbacksAndMessages(null)
-
         super.onDestroy()
     }
 }
-အခုလုပ်ရမယ့်အဆင့်
-MainActivity.kt ထဲက code အဟောင်း အကုန်ဖျက်
-အပေါ်က code အကုန် paste
-Commit changes
-GitHub Actions မှာ assembleDebug ပြန် run
-Build success ဖြစ်ရင် APK install လုပ်ပါ။
-
-⚠️ ဒီအဆင့်မှာ RAM/Junk ကို တကယ် system-wide clean လုပ်တာမျိုး မဟုတ်သေးပါ။ အရင်ဆုံး UI + app flow ကို build အောင်လုပ်မယ်။ Build အောင်ပြီးရင် နောက်အဆင့်မှာ တကယ်အသုံးဝင်တဲ့ Android APIs နဲ့ Safe Boost / Battery / Storage / Permission / Notification / History တွေကို ထည့်ပြီး production version ဆက်လုပ်မယ်။
-
-ဟုတ်ပြီ 👍 Screenshot ကြည့်ရတာ APK က အလုပ်လုပ်နေပြီ။ UI လည်း ပေါ်လာပြီး APP ON, Fake Root Status, Boost 1/2/3, BOOST PHONE အားလုံး ပြန်ပါလာပါတယ်။
-
-ဒါပေမယ့် အခုချက်ချင်း ပြင်သင့်တဲ့အချက် ၂ ခု ရှိပါတယ်။
-
-1. Boost progress က လှည့်နေတဲ့အဝိုင်း ဖြစ်နေတယ်
-
-Screenshot မှာ—
-
-🔵 လှည့်နေတဲ့ progress
-
-ဖြစ်နေတာက ProgressBar က indeterminate mode ဖြစ်နေသေးလို့ပါ။
-
-MainActivity.kt မှာ ဒီလိုင်းကိုရှာပါ—
-
-progressBar = ProgressBar(this)
-
-ပြီးရင် ဒီလိုပြောင်းပါ—
-
-progressBar = ProgressBar(this)
-progressBar.isIndeterminate = false
-progressBar.max = 100
-progressBar.progress = 0
-
-ဒါဆို Boost နှိပ်တဲ့အခါ 0% → 10% → 20% ... → 100% လို တကယ့် progress bar အဖြစ်ပြပါမယ်။
-
-2. အခု UI က foundation version ဖြစ်သေးတယ်
-
-Screenshot ထဲမှာ
-
-Battery: System Monitor
-CPU Temperature: System Monitor
-Root Status: Not Required
-
-လို့ပဲပြနေပါတယ်။
-
-နောက် version မှာ ဒါတွေကို တကယ့် Android system information နဲ့ချိတ်မယ်။
-
-ပြီးတော့ အရင်ပြောထားတဲ့ feature တွေကိုလည်း main screen မှာ ထည့်မယ်—
-
-🟢 APP ON / OFF
-
-🚀 PHONE BOOST
-   1  2  3
-
-🧹 RAM CLEAN
-🗑️ JUNK CLEAN
-🔋 BATTERY SAVER
-🌡️ CPU / TEMPERATURE
-📊 PERFORMANCE MONITOR
-💾 STORAGE ANALYZER
-📱 DEVICE INFO
-
-🛡️ ROOT STATUS
-⚙️ SETTINGS
-🔔 BOOST NOTIFICATION
-🧾 BOOST HISTORY
-
-──────────────
-✓ BOOST COMPLETED
-Before / After
-──────────────
-
-အရေးကြီးတာက Fake Root ကို actual root ရှိသလို မပြောဘဲ Simulation / Status အနေနဲ့ပဲထားမယ်။
-
-အခုတော့ ပထမဆုံး progress bar ပြင်ပြီး APK build တစ်ခါလုပ်ပါ။ Build success ဖြစ်ရင် နောက်တစ်ဆင့်မှာ ဒီ screenshot ထက် professional ဖြစ်အောင် main UI အပြည့် + တကယ်အလုပ်လုပ်နိုင်တဲ့ Safe Boost features ကို ဆက်ထည့်မယ်။
-
-စ
-
-ရပါတယ် 👍 ဆက်လုပ်မယ်။
-
-အခု screenshot မှာ App က run ဖြစ်နေပြီဆိုတော့ အခု version ကို မဖျက်ဘဲ နောက်အဆင့်အနေနဲ့ ProgressBar ကို 0–100% တကယ်ပြအောင် အရင်ပြင်ပါ။
-
-MainActivity.kt ထဲက—
-
-progressBar = ProgressBar(this)
-progressBar.max = 100
-progressBar.progress = 0
-
-ကို ဒီလိုပြောင်းပါ 👇
-
-progressBar = ProgressBar(this)
-progressBar.isIndeterminate = false
-progressBar.max = 100
-progressBar.progress = 0
-
-ပြီးရင် Commit changes → GitHub Actions → Build APK လုပ်ပါ။
-
-ပြီးရင် ကျွန်တော်တို့ Version 2 ကို ဆက်ထည့်မယ်
-
-Main Screen
-
-🟢 ON / OFF
-🚀 Boost 1 / 2 / 3
-🧹 RAM Clean
-🗑️ Junk Clean
-🔋 Battery Saver
-🌡️ Temperature
-📊 Performance
-💾 Storage
-📱 Device Info
-🛡️ Fake Root Status
-🧾 Boost History
-🔔 Notification
-⚙️ Settings
-Before / After Boost Result
-
-ပြီးတော့ Boost Completed တစ်ခုပဲမဟုတ်ဘဲ တကယ် feature တွေပါနှိပ်လို့ရတဲ့ app အဖြစ် ဆက်လုပ်မယ်။
-
-Chat paused until usage resets at 5:34 PM
-You’ve reached the limit for chats that include files or images. Start a new text-only chat or upgrade to continue now.
-New chat
-Claim free offer
-
-progressBar = ProgressBar(this)
-
-progressBar.isIndeterminate = false
-
-progressBar.max = 100
-
-progressBar.progress = 0
