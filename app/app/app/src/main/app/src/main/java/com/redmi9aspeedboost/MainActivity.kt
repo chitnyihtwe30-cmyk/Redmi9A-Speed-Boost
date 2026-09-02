@@ -4,6 +4,7 @@ import android.app.Activity
 import android.app.ActivityManager
 import android.content.Context
 import android.content.Intent
+import android.content.pm.ApplicationInfo
 import android.content.pm.PackageManager
 import android.net.Uri
 import android.os.BatteryManager
@@ -24,22 +25,21 @@ class MainActivity : Activity() {
     private lateinit var statusText: TextView
     private lateinit var ramText: TextView
     private lateinit var batteryText: TextView
+    private lateinit var temperatureText: TextView
     private lateinit var storageText: TextView
-    private lateinit var tempText: TextView
-    private lateinit var progress: ProgressBar
+    private lateinit var progressBar: ProgressBar
     private lateinit var resultText: TextView
 
     private var appEnabled = true
-    private var selectedBoost = 1
+    private var boostMode = 1
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-
-        buildUI()
+        createInterface()
         updateMonitor()
     }
 
-    private fun buildUI() {
+    private fun createInterface() {
 
         val root = LinearLayout(this)
         root.orientation = LinearLayout.VERTICAL
@@ -49,116 +49,112 @@ class MainActivity : Activity() {
         val scroll = ScrollView(this)
         scroll.addView(root)
 
-        val title = text(
-            "Redmi 9A Speed Boost",
-            26,
-            0xFFFFFFFF.toInt()
+        root.addView(
+            makeText(
+                "Redmi 9A Speed Boost",
+                26f,
+                0xFFFFFFFF.toInt()
+            )
         )
-        root.addView(title)
 
-        val subtitle = text(
-            "Phone Performance Manager",
-            14,
-            0xFFAAAAAA.toInt()
+        root.addView(
+            makeText(
+                "Phone Performance Manager",
+                14f,
+                0xFFAAAAAA.toInt()
+            )
         )
-        root.addView(subtitle)
 
         root.addView(space(12))
 
-        // APP ON / OFF
         val appSwitch = Switch(this)
         appSwitch.text = "APP ON / OFF"
         appSwitch.textSize = 17f
         appSwitch.setTextColor(0xFFFFFFFF.toInt())
         appSwitch.isChecked = true
 
-        appSwitch.setOnCheckedChangeListener { _, checked ->
-            appEnabled = checked
-
-            if (checked) {
-                statusText.text = "APP STATUS: ON"
-            } else {
-                statusText.text = "APP STATUS: OFF"
-            }
+        appSwitch.setOnCheckedChangeListener { _, enabled ->
+            appEnabled = enabled
+            statusText.text =
+                if (enabled) "APP STATUS: ON"
+                else "APP STATUS: OFF"
         }
 
         root.addView(appSwitch)
 
-        statusText = text(
+        statusText = makeText(
             "APP STATUS: ON",
-            15,
+            16f,
             0xFF66FF88.toInt()
         )
+
         root.addView(statusText)
 
         root.addView(space(16))
 
-        // MONITOR
         root.addView(section("PHONE MONITOR"))
 
-        ramText = text("", 16, 0xFFFFFFFF.toInt())
-        batteryText = text("", 16, 0xFFFFFFFF.toInt())
-        tempText = text("", 16, 0xFFFFFFFF.toInt())
-        storageText = text("", 16, 0xFFFFFFFF.toInt())
+        ramText = makeText("", 16f, 0xFFFFFFFF.toInt())
+        batteryText = makeText("", 16f, 0xFFFFFFFF.toInt())
+        temperatureText = makeText("", 16f, 0xFFFFFFFF.toInt())
+        storageText = makeText("", 16f, 0xFFFFFFFF.toInt())
 
-        root.addView(card(ramText))
-        root.addView(card(batteryText))
-        root.addView(card(tempText))
-        root.addView(card(storageText))
+        root.addView(makeCard(ramText))
+        root.addView(makeCard(batteryText))
+        root.addView(makeCard(temperatureText))
+        root.addView(makeCard(storageText))
 
-        root.addView(space(12))
-
-        val monitorButton = button("REFRESH MONITOR")
-        monitorButton.setOnClickListener {
+        val refresh = makeButton("REFRESH MONITOR")
+        refresh.setOnClickListener {
             updateMonitor()
         }
-        root.addView(monitorButton)
+        root.addView(refresh)
 
-        val ramOptimize = button("RAM OPTIMIZE")
-        ramOptimize.setOnClickListener {
+        val optimize = makeButton("RAM OPTIMIZE")
+        optimize.setOnClickListener {
             optimizeRam()
         }
-        root.addView(ramOptimize)
+        root.addView(optimize)
 
         root.addView(space(16))
 
-        // BOOST MODES
         root.addView(section("BOOST MODE"))
 
-        val modeLayout = LinearLayout(this)
-        modeLayout.orientation = LinearLayout.HORIZONTAL
+        val modes = LinearLayout(this)
+        modes.orientation = LinearLayout.HORIZONTAL
 
-        val mode1 = button("BOOST 1")
-        val mode2 = button("BOOST 2")
-        val mode3 = button("BOOST 3")
+        val mode1 = makeButton("BOOST 1")
+        val mode2 = makeButton("BOOST 2")
+        val mode3 = makeButton("BOOST 3")
 
         mode1.setOnClickListener {
-            selectedBoost = 1
+            boostMode = 1
             resultText.text = "BOOST 1 SELECTED"
         }
 
         mode2.setOnClickListener {
-            selectedBoost = 2
+            boostMode = 2
             resultText.text = "BOOST 2 SELECTED"
         }
 
         mode3.setOnClickListener {
-            selectedBoost = 3
+            boostMode = 3
             resultText.text = "BOOST 3 SELECTED"
         }
 
-        modeLayout.addView(mode1, weightParams())
-        modeLayout.addView(mode2, weightParams())
-        modeLayout.addView(mode3, weightParams())
+        modes.addView(mode1, weightParams())
+        modes.addView(mode2, weightParams())
+        modes.addView(mode3, weightParams())
 
-        root.addView(modeLayout)
+        root.addView(modes)
 
-        root.addView(space(12))
+        root.addView(space(10))
 
-        // BOOST PHONE
-        val boostButton = button("BOOST PHONE")
-        boostButton.textSize = 21f
-        boostButton.setOnClickListener {
+        val boost = makeButton("BOOST PHONE")
+        boost.textSize = 20f
+
+        boost.setOnClickListener {
+
             if (!appEnabled) {
                 Toast.makeText(
                     this,
@@ -171,110 +167,111 @@ class MainActivity : Activity() {
             startBoost()
         }
 
-        root.addView(boostButton)
+        root.addView(boost)
 
-        root.addView(space(12))
+        root.addView(space(10))
 
-        progress = ProgressBar(
+        progressBar = ProgressBar(
             this,
             null,
             android.R.attr.progressBarStyleHorizontal
         )
 
-        progress.max = 100
-        progress.progress = 0
+        progressBar.max = 100
+        progressBar.progress = 0
 
         root.addView(
-            progress,
+            progressBar,
             LinearLayout.LayoutParams(
                 ViewGroup.LayoutParams.MATCH_PARENT,
                 dp(18)
             )
         )
 
-        resultText = text(
+        resultText = makeText(
             "READY",
-            17,
+            17f,
             0xFFFFFFFF.toInt()
         )
+
         resultText.gravity = Gravity.CENTER
+
         root.addView(resultText)
 
         root.addView(space(20))
 
-        // BEFORE / AFTER
         root.addView(section("BEFORE / AFTER"))
 
-        val beforeAfter = text(
-            "Before: Monitor current phone state\n" +
-                    "After: Monitor state after boost",
-            15,
+        val beforeAfter = makeText(
+            "Before: Current phone state\n" +
+                    "After: State after optimization",
+            15f,
             0xFFCCCCCC.toInt()
         )
 
-        root.addView(card(beforeAfter))
+        root.addView(makeCard(beforeAfter))
 
         root.addView(space(16))
 
-        // DEVICE INFO
         root.addView(section("DEVICE INFO"))
 
-        val deviceInfo = text(
+        val deviceInfo = makeText(
             "Manufacturer: ${Build.MANUFACTURER}\n" +
                     "Model: ${Build.MODEL}\n" +
                     "Android: ${Build.VERSION.RELEASE}\n" +
                     "SDK: ${Build.VERSION.SDK_INT}",
-            15,
+            15f,
             0xFFFFFFFF.toInt()
         )
 
-        root.addView(card(deviceInfo))
+        root.addView(makeCard(deviceInfo))
 
         root.addView(space(16))
 
-        // ROOT
         root.addView(section("ROOT STATUS"))
 
-        val rootStatus = text(
-            if (isRooted()) {
+        val rootStatus = makeText(
+            if (isRooted())
                 "REAL ROOT: DETECTED"
-            } else {
-                "REAL ROOT: NOT DETECTED"
-            },
-            16,
+            else
+                "REAL ROOT: NOT DETECTED",
+            16f,
             0xFFFFFFFF.toInt()
         )
 
-        root.addView(card(rootStatus))
+        root.addView(makeCard(rootStatus))
 
-        val fakeRoot = button("FAKE ROOT — SIMULATION ONLY")
+        val fakeRoot = makeButton(
+            "FAKE ROOT — SIMULATION ONLY"
+        )
 
         fakeRoot.setOnClickListener {
+            rootStatus.text =
+                "FAKE ROOT: SIMULATION ACTIVE"
+
             Toast.makeText(
                 this,
-                "Fake Root is simulation only. No real root access granted.",
+                "Simulation only — real root access was NOT granted.",
                 Toast.LENGTH_LONG
             ).show()
-
-            rootStatus.text = "FAKE ROOT: SIMULATION ACTIVE"
         }
 
         root.addView(fakeRoot)
 
         root.addView(space(16))
 
-        // STORAGE
         root.addView(section("STORAGE"))
 
-        val storageScan = button("SCAN JUNK / CACHE")
+        val scan = makeButton("SCAN JUNK / CACHE")
 
-        storageScan.setOnClickListener {
-            scanStorage()
+        scan.setOnClickListener {
+            scanCache()
         }
 
-        root.addView(storageScan)
+        root.addView(scan)
 
-        val storageSettings = button("OPEN STORAGE SETTINGS")
+        val storageSettings =
+            makeButton("OPEN STORAGE SETTINGS")
 
         storageSettings.setOnClickListener {
             try {
@@ -292,23 +289,21 @@ class MainActivity : Activity() {
 
         root.addView(space(16))
 
-        // BATTERY
         root.addView(section("BATTERY"))
 
-        val batteryButton = button("BATTERY INFO")
+        val batteryInfo = makeButton("BATTERY INFO")
 
-        batteryButton.setOnClickListener {
+        batteryInfo.setOnClickListener {
             showBatteryInfo()
         }
 
-        root.addView(batteryButton)
+        root.addView(batteryInfo)
 
         root.addView(space(16))
 
-        // APP MANAGER
         root.addView(section("APP MANAGER"))
 
-        val appManager = button("OPEN APP MANAGER")
+        val appManager = makeButton("OPEN APP MANAGER")
 
         appManager.setOnClickListener {
             openAppManager()
@@ -318,39 +313,39 @@ class MainActivity : Activity() {
 
         root.addView(space(20))
 
-        val note = text(
-            "Note: Android system restrictions may limit background process killing and other privileged operations.",
-            13,
-            0xFF999999.toInt()
+        root.addView(
+            makeText(
+                "Android may restrict privileged operations such as force-stop.",
+                13f,
+                0xFF999999.toInt()
+            )
         )
-
-        root.addView(note)
 
         setContentView(scroll)
     }
 
     private fun startBoost() {
 
-        progress.progress = 0
+        progressBar.progress = 0
         resultText.text = "BOOSTING..."
 
         Thread {
 
-            for (i in 0..100 step 5) {
+            for (value in 0..100 step 5) {
 
-                Thread.sleep(80)
+                Thread.sleep(70)
 
                 runOnUiThread {
-                    progress.progress = i
+                    progressBar.progress = value
                     resultText.text =
-                        "BOOST $selectedBoost : $i%"
+                        "BOOST $boostMode : $value%"
                 }
             }
 
             optimizeRam()
 
             runOnUiThread {
-                progress.progress = 100
+                progressBar.progress = 100
                 resultText.text = "BOOST COMPLETED"
                 updateMonitor()
             }
@@ -364,10 +359,8 @@ class MainActivity : Activity() {
             getSystemService(Context.ACTIVITY_SERVICE)
                     as ActivityManager
 
-        try {
-            manager.clearApplicationUserData(packageName)
-        } catch (_: Exception) {
-        }
+        val info = ActivityManager.MemoryInfo()
+        manager.getMemoryInfo(info)
 
         Toast.makeText(
             this,
@@ -380,25 +373,23 @@ class MainActivity : Activity() {
 
     private fun updateMonitor() {
 
-        // RAM
         val manager =
             getSystemService(Context.ACTIVITY_SERVICE)
                     as ActivityManager
 
-        val memoryInfo = ActivityManager.MemoryInfo()
-        manager.getMemoryInfo(memoryInfo)
+        val info = ActivityManager.MemoryInfo()
+        manager.getMemoryInfo(info)
 
-        val totalRam = memoryInfo.totalMem
-        val availableRam = memoryInfo.availMem
-        val usedRam = totalRam - availableRam
+        val total = info.totalMem
+        val available = info.availMem
+        val used = total - available
 
         ramText.text =
             "RAM\n" +
-                    "Used: ${formatBytes(usedRam)}\n" +
-                    "Available: ${formatBytes(availableRam)}\n" +
-                    "Total: ${formatBytes(totalRam)}"
+                    "Used: ${formatBytes(used)}\n" +
+                    "Available: ${formatBytes(available)}\n" +
+                    "Total: ${formatBytes(total)}"
 
-        // Battery
         val batteryManager =
             getSystemService(Context.BATTERY_SERVICE)
                     as BatteryManager
@@ -411,8 +402,7 @@ class MainActivity : Activity() {
         batteryText.text =
             "Battery: $battery%"
 
-        // Temperature
-        val intent = registerReceiver(
+        val batteryIntent = registerReceiver(
             null,
             android.content.IntentFilter(
                 Intent.ACTION_BATTERY_CHANGED
@@ -420,49 +410,42 @@ class MainActivity : Activity() {
         )
 
         val temperature =
-            intent?.getIntExtra(
+            batteryIntent?.getIntExtra(
                 BatteryManager.EXTRA_TEMPERATURE,
                 0
             ) ?: 0
 
-        tempText.text =
+        temperatureText.text =
             "Battery Temperature: ${temperature / 10.0} °C"
 
-        // Storage
-        val stat = StatFs(
-            Environment.getDataDirectory().path
-        )
+        val stat =
+            StatFs(
+                Environment.getDataDirectory().path
+            )
 
-        val total =
-            stat.totalBytes
-
-        val free =
-            stat.availableBytes
-
-        val used =
-            total - free
+        val totalStorage = stat.totalBytes
+        val freeStorage = stat.availableBytes
+        val usedStorage =
+            totalStorage - freeStorage
 
         storageText.text =
             "Storage\n" +
-                    "Used: ${formatBytes(used)}\n" +
-                    "Free: ${formatBytes(free)}\n" +
-                    "Total: ${formatBytes(total)}"
+                    "Used: ${formatBytes(usedStorage)}\n" +
+                    "Free: ${formatBytes(freeStorage)}\n" +
+                    "Total: ${formatBytes(totalStorage)}"
     }
 
-    private fun scanStorage() {
+    private fun scanCache() {
 
-        val cacheSize = try {
-            getDirSize(cacheDir)
-        } catch (_: Exception) {
-            0L
-        }
+        val size = directorySize(cacheDir)
 
-        AlertDialog.Builder(this)
+        android.app.AlertDialog.Builder(this)
             .setTitle("Junk / Cache Scan")
             .setMessage(
-                "App cache detected:\n\n" +
-                        formatBytes(cacheSize) +
-                        "\n\nAndroid system cache cannot be safely deleted by a normal app without privileged access."
+                "App cache found:\n\n" +
+                        formatBytes(size) +
+                        "\n\n" +
+                        "System cache requires system/privileged access."
             )
             .setPositiveButton("OK", null)
             .show()
@@ -489,7 +472,7 @@ class MainActivity : Activity() {
                 -1
             ) ?: -1
 
-        val temp =
+        val temperature =
             intent?.getIntExtra(
                 BatteryManager.EXTRA_TEMPERATURE,
                 0
@@ -505,12 +488,14 @@ class MainActivity : Activity() {
             status == BatteryManager.BATTERY_STATUS_CHARGING ||
                     status == BatteryManager.BATTERY_STATUS_FULL
 
-        AlertDialog.Builder(this)
+        android.app.AlertDialog.Builder(this)
             .setTitle("Battery Information")
             .setMessage(
-                "Battery: $level/$scale\n" +
-                        "Charging: ${if (charging) "YES" else "NO"}\n" +
-                        "Temperature: ${temp / 10.0} °C"
+                "Battery: $level / $scale\n" +
+                        "Charging: " +
+                        if (charging) "YES" else "NO" +
+                        "\nTemperature: " +
+                        "${temperature / 10.0} °C"
             )
             .setPositiveButton("OK", null)
             .show()
@@ -518,32 +503,34 @@ class MainActivity : Activity() {
 
     private fun openAppManager() {
 
-        val packages =
+        val apps =
             packageManager.getInstalledApplications(
                 PackageManager.GET_META_DATA
             )
+                .filter {
+                    it.packageName != packageName
+                }
+                .sortedBy {
+                    packageManager
+                        .getApplicationLabel(it)
+                        .toString()
+                        .lowercase(Locale.getDefault())
+                }
 
-        val names = packages
-            .filter {
-                it.packageName != packageName
-            }
-            .sortedBy {
-                packageManager.getApplicationLabel(it)
+        val names =
+            apps.map {
+                packageManager
+                    .getApplicationLabel(it)
                     .toString()
-                    .lowercase(Locale.getDefault())
-            }
+            }.toTypedArray()
 
-        val display = names.map {
-            packageManager.getApplicationLabel(it).toString()
-        }.toTypedArray()
-
-        AlertDialog.Builder(this)
+        android.app.AlertDialog.Builder(this)
             .setTitle("Installed Apps")
-            .setItems(display) { _, which ->
+            .setItems(names) { _, position ->
 
-                val app = names[which]
-
-                showAppActions(app.packageName)
+                showAppActions(
+                    apps[position].packageName
+                )
             }
             .setNegativeButton("CLOSE", null)
             .show()
@@ -551,16 +538,24 @@ class MainActivity : Activity() {
 
     private fun showAppActions(packageName: String) {
 
-        val label = try {
-            packageManager.getApplicationLabel(
+        val appInfo =
+            try {
                 packageManager.getApplicationInfo(
                     packageName,
                     0
                 )
-            ).toString()
-        } catch (_: Exception) {
-            packageName
-        }
+            } catch (_: Exception) {
+                null
+            }
+
+        val name =
+            if (appInfo != null) {
+                packageManager
+                    .getApplicationLabel(appInfo)
+                    .toString()
+            } else {
+                packageName
+            }
 
         val actions = arrayOf(
             "RUN APP",
@@ -569,8 +564,8 @@ class MainActivity : Activity() {
             "SECURITY SCAN"
         )
 
-        AlertDialog.Builder(this)
-            .setTitle(label)
+        android.app.AlertDialog.Builder(this)
+            .setTitle(name)
             .setItems(actions) { _, which ->
 
                 when (which) {
@@ -589,28 +584,20 @@ class MainActivity : Activity() {
 
     private fun runApp(packageName: String) {
 
-        try {
+        val launchIntent =
+            packageManager.getLaunchIntentForPackage(
+                packageName
+            )
 
-            val launch =
-                packageManager.getLaunchIntentForPackage(
-                    packageName
-                )
+        if (launchIntent != null) {
 
-            if (launch != null) {
-                startActivity(launch)
-            } else {
-                Toast.makeText(
-                    this,
-                    "This app cannot be launched.",
-                    Toast.LENGTH_SHORT
-                ).show()
-            }
+            startActivity(launchIntent)
 
-        } catch (e: Exception) {
+        } else {
 
             Toast.makeText(
                 this,
-                "Unable to launch app.",
+                "This app cannot be launched.",
                 Toast.LENGTH_SHORT
             ).show()
         }
@@ -618,7 +605,7 @@ class MainActivity : Activity() {
 
     private fun killApp(packageName: String) {
 
-        AlertDialog.Builder(this)
+        android.app.AlertDialog.Builder(this)
             .setTitle("Kill App?")
             .setMessage(
                 "Stop background processes of:\n$packageName"
@@ -657,9 +644,10 @@ class MainActivity : Activity() {
 
     private fun openAppInfo(packageName: String) {
 
-        val intent = Intent(
-            Settings.ACTION_APPLICATION_DETAILS_SETTINGS
-        )
+        val intent =
+            Intent(
+                Settings.ACTION_APPLICATION_DETAILS_SETTINGS
+            )
 
         intent.data =
             Uri.parse("package:$packageName")
@@ -669,25 +657,26 @@ class MainActivity : Activity() {
 
     private fun securityScan(packageName: String) {
 
-        val info = try {
-            packageManager.getPackageInfo(
-                packageName,
-                0
-            )
-        } catch (_: Exception) {
-            null
-        }
+        val info =
+            try {
+                packageManager.getPackageInfo(
+                    packageName,
+                    0
+                )
+            } catch (_: Exception) {
+                null
+            }
 
         val version =
             info?.versionName ?: "Unknown"
 
-        AlertDialog.Builder(this)
+        android.app.AlertDialog.Builder(this)
             .setTitle("Security Scan")
             .setMessage(
                 "Package:\n$packageName\n\n" +
                         "Version:\n$version\n\n" +
                         "Basic package inspection completed.\n\n" +
-                        "This is NOT a full antivirus scan."
+                        "This is not a full antivirus scan."
             )
             .setPositiveButton("OK", null)
             .show()
@@ -708,20 +697,20 @@ class MainActivity : Activity() {
         }
     }
 
-    private fun getDirSize(dir: File): Long {
+    private fun directorySize(directory: File): Long {
 
-        if (!dir.exists()) return 0L
+        if (!directory.exists()) return 0L
 
         var size = 0L
 
         try {
 
-            dir.listFiles()?.forEach {
+            directory.listFiles()?.forEach { file ->
 
-                size += if (it.isDirectory) {
-                    getDirSize(it)
+                size += if (file.isDirectory) {
+                    directorySize(file)
                 } else {
-                    it.length()
+                    file.length()
                 }
             }
 
@@ -733,73 +722,79 @@ class MainActivity : Activity() {
 
     private fun formatBytes(bytes: Long): String {
 
-        if (bytes <= 0) return "0 MB"
+        if (bytes <= 0L) return "0 MB"
 
         val mb =
             bytes / (1024.0 * 1024.0)
 
-        if (mb < 1024) {
-            return String.format(
+        return if (mb < 1024.0) {
+
+            String.format(
                 Locale.US,
                 "%.1f MB",
                 mb
             )
-        }
 
-        return String.format(
-            Locale.US,
-            "%.2f GB",
-            mb / 1024.0
-        )
+        } else {
+
+            String.format(
+                Locale.US,
+                "%.2f GB",
+                mb / 1024.0
+            )
+        }
     }
 
-    private fun text(
+    private fun makeText(
         value: String,
-        size: Int,
+        size: Float,
         color: Int
     ): TextView {
 
-        val t = TextView(this)
+        val view = TextView(this)
 
-        t.text = value
-        t.textSize = size.toFloat()
-        t.setTextColor(color)
-        t.setPadding(
+        view.text = value
+        view.textSize = size
+        view.setTextColor(color)
+        view.setPadding(
             dp(4),
             dp(8),
             dp(4),
             dp(8)
         )
 
-        return t
+        return view
     }
 
     private fun section(value: String): TextView {
 
-        return text(
+        return makeText(
             value,
-            18,
+            18f,
             0xFF66CCFF.toInt()
         )
     }
 
-    private fun card(view: View): View {
+    private fun makeCard(view: View): View {
 
-        val box = LinearLayout(this)
+        val container =
+            LinearLayout(this)
 
-        box.orientation = LinearLayout.VERTICAL
-        box.setPadding(
+        container.orientation =
+            LinearLayout.VERTICAL
+
+        container.setPadding(
             dp(12),
             dp(8),
             dp(12),
             dp(8)
         )
 
-        box.setBackgroundColor(
+        container.setBackgroundColor(
             0xFF1B1D22.toInt()
         )
 
-        box.addView(view)
+        container.addView(view)
 
         val params =
             LinearLayout.LayoutParams(
@@ -814,56 +809,52 @@ class MainActivity : Activity() {
             dp(4)
         )
 
-        box.layoutParams = params
+        container.layoutParams = params
 
-        return box
+        return container
     }
 
-    private fun button(value: String): Button {
+    private fun makeButton(
+        value: String
+    ): Button {
 
-        val b = Button(this)
+        val button = Button(this)
 
-        b.text = value
-        b.textSize = 15f
+        button.text = value
+        button.textSize = 15f
+        button.isAllCaps = false
 
-        b.setAllCaps(false)
-
-        val params =
+        button.layoutParams =
             LinearLayout.LayoutParams(
                 ViewGroup.LayoutParams.MATCH_PARENT,
                 dp(52)
-            )
+            ).apply {
+                setMargins(
+                    0,
+                    dp(5),
+                    0,
+                    dp(5)
+                )
+            }
 
-        params.setMargins(
-            0,
-            dp(5),
-            0,
-            dp(5)
-        )
-
-        b.layoutParams = params
-
-        return b
+        return button
     }
 
     private fun weightParams():
             LinearLayout.LayoutParams {
 
-        val p =
-            LinearLayout.LayoutParams(
-                0,
-                dp(52),
-                1f
-            )
-
-        p.setMargins(
-            dp(2),
+        return LinearLayout.LayoutParams(
             0,
-            dp(2),
-            0
-        )
-
-        return p
+            dp(52),
+            1f
+        ).apply {
+            setMargins(
+                dp(2),
+                0,
+                dp(2),
+                0
+            )
+        }
     }
 
     private fun space(value: Int): Space {
