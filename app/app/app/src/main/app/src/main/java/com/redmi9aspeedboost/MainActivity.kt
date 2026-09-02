@@ -35,11 +35,10 @@ override fun onCreate(savedInstanceState: Bundle?) {
     super.onCreate(savedInstanceState)
 
     val scroll = ScrollView(this)
-
     val layout = LinearLayout(this)
+
     layout.orientation = LinearLayout.VERTICAL
     layout.setPadding(24, 24, 24, 24)
-
     scroll.addView(layout)
 
     val title = TextView(this)
@@ -173,8 +172,7 @@ override fun onCreate(savedInstanceState: Bundle?) {
 
             runOnUiThread {
                 progress.progress = 100
-                status.text =
-                    "✓ BOOST COMPLETED\nMode $mode"
+                status.text = "BOOST COMPLETED\nMode $mode"
 
                 updatePhoneInfo()
 
@@ -194,13 +192,9 @@ override fun onCreate(savedInstanceState: Bundle?) {
     ramOptimize.text = "RAM OPTIMIZE"
 
     ramOptimize.setOnClickListener {
-
         System.gc()
-
         updatePhoneInfo()
-
-        status.text =
-            "RAM OPTIMIZATION COMPLETED"
+        status.text = "RAM OPTIMIZATION COMPLETED"
 
         Toast.makeText(
             this,
@@ -217,19 +211,13 @@ override fun onCreate(savedInstanceState: Bundle?) {
     storageScan.setOnClickListener {
 
         try {
-
             val stat = StatFs(
                 Environment.getDataDirectory().path
             )
 
-            val total =
-                stat.totalBytes / 1073741824L
-
-            val free =
-                stat.availableBytes / 1073741824L
-
-            val used =
-                total - free
+            val total = stat.totalBytes / 1073741824L
+            val free = stat.availableBytes / 1073741824L
+            val used = total - free
 
             status.text =
                 "STORAGE SCAN COMPLETED\n\n" +
@@ -238,9 +226,7 @@ override fun onCreate(savedInstanceState: Bundle?) {
                 "Total: $total GB"
 
         } catch (_: Exception) {
-
-            status.text =
-                "Storage scan unavailable"
+            status.text = "Storage scan unavailable"
         }
     }
 
@@ -252,15 +238,10 @@ override fun onCreate(savedInstanceState: Bundle?) {
     settings.setOnClickListener {
 
         try {
-
             startActivity(
-                Intent(
-                    Settings.ACTION_INTERNAL_STORAGE_SETTINGS
-                )
+                Intent(Settings.ACTION_INTERNAL_STORAGE_SETTINGS)
             )
-
         } catch (_: Exception) {
-
             startActivity(
                 Intent(Settings.ACTION_SETTINGS)
             )
@@ -284,12 +265,10 @@ override fun onCreate(savedInstanceState: Bundle?) {
     appInfo.text = "APP INFORMATION"
 
     appInfo.setOnClickListener {
-
         status.text =
             "App Name: Redmi 9A Speed Boost\n" +
             "Package: com.redmi9aspeedboost\n" +
             "Version: 1.0"
-
     }
 
     layout.addView(appInfo)
@@ -298,13 +277,11 @@ override fun onCreate(savedInstanceState: Bundle?) {
     security.text = "SECURITY STATUS"
 
     security.setOnClickListener {
-
         status.text =
             "SECURITY STATUS\n\n" +
             "Root access: Not required\n" +
-            "Shizuku: Not required for basic features\n" +
+            "Shizuku: Optional\n" +
             "System changes: Protected"
-
     }
 
     layout.addView(security)
@@ -317,25 +294,17 @@ override fun onCreate(savedInstanceState: Bundle?) {
 private fun updatePhoneInfo() {
 
     try {
-
         val manager =
             getSystemService(
                 Context.ACTIVITY_SERVICE
             ) as ActivityManager
 
-        val memory =
-            ActivityManager.MemoryInfo()
-
+        val memory = ActivityManager.MemoryInfo()
         manager.getMemoryInfo(memory)
 
-        val total =
-            memory.totalMem / 1048576L
-
-        val available =
-            memory.availMem / 1048576L
-
-        val used =
-            total - available
+        val total = memory.totalMem / 1048576L
+        val available = memory.availMem / 1048576L
+        val used = total - available
 
         ram.text =
             "RAM\n" +
@@ -344,12 +313,10 @@ private fun updatePhoneInfo() {
             "Total: $total MB"
 
     } catch (_: Exception) {
-
         ram.text = "RAM: unavailable"
     }
 
     try {
-
         val manager =
             getSystemService(
                 Context.BATTERY_SERVICE
@@ -360,30 +327,21 @@ private fun updatePhoneInfo() {
                 BatteryManager.BATTERY_PROPERTY_CAPACITY
             )
 
-        battery.text =
-            "Battery: $level%"
+        battery.text = "Battery: $level%"
 
     } catch (_: Exception) {
-
-        battery.text =
-            "Battery: unavailable"
+        battery.text = "Battery: unavailable"
     }
 
     try {
-
         val stat =
             StatFs(
                 Environment.getDataDirectory().path
             )
 
-        val total =
-            stat.totalBytes / 1073741824L
-
-        val free =
-            stat.availableBytes / 1073741824L
-
-        val used =
-            total - free
+        val total = stat.totalBytes / 1073741824L
+        val free = stat.availableBytes / 1073741824L
+        val used = total - free
 
         storage.text =
             "Storage\n" +
@@ -392,9 +350,7 @@ private fun updatePhoneInfo() {
             "Total: $total GB"
 
     } catch (_: Exception) {
-
-        storage.text =
-            "Storage: unavailable"
+        storage.text = "Storage: unavailable"
     }
 
     device.text =
@@ -407,6 +363,3 @@ private fun updatePhoneInfo() {
 ```
 
 }
-
-```
-```
