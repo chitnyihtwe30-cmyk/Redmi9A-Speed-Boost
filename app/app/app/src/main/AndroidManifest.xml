@@ -5,7 +5,9 @@
 
     <application
         android:allowBackup="false"
+        android:icon="@drawable/ic_speed_boost"
         android:label="Redmi 9A Speed Boost"
+        android:roundIcon="@drawable/ic_speed_boost"
         android:supportsRtl="true">
 
         <activity
