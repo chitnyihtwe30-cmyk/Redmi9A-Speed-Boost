@@ -9,6 +9,8 @@ import android.os.Bundle
 import android.os.Environment
 import android.os.StatFs
 import android.view.Gravity
+import android.view.View
+import android.widget.AdapterView
 import android.widget.ArrayAdapter
 import android.widget.Button
 import android.widget.LinearLayout
@@ -25,11 +27,15 @@ class MainActivity : Activity() {
     private lateinit var device: TextView
     private lateinit var fakeRootStatus: TextView
     private lateinit var appPowerButton: Button
+    private lateinit var boostButton: Button
     private lateinit var modeSelector: Spinner
 
     private var boostMode = 1
     private var appEnabled = true
     private var fakeRootEnabled = false
+    private var boosting = false
+
+    private val modes = arrayOf("1 — SAFE", "2 — PERFORMANCE", "3 — MAX SAFE")
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -41,197 +47,243 @@ class MainActivity : Activity() {
 
     private fun createUI() {
         val scroll = ScrollView(this)
-        val root = LinearLayout(this)
-        root.orientation = LinearLayout.VERTICAL
-        root.setPadding(24, 24, 24, 24)
+        val root = LinearLayout(this).apply {
+            orientation = LinearLayout.VERTICAL
+            setPadding(24, 20, 24, 32)
+        }
         scroll.addView(root)
 
-        val title = TextView(this)
-        title.text = "REDMI 9A SPEED BOOST"
-        title.textSize = 25f
-        title.gravity = Gravity.CENTER
-        title.setPadding(0, 20, 0, 25)
+        val title = TextView(this).apply {
+            text = "REDMI 9A SPEED BOOST"
+            textSize = 25f
+            gravity = Gravity.CENTER
+            setPadding(0, 16, 0, 6)
+        }
         root.addView(title)
 
-        appPowerButton = Button(this)
-        appPowerButton.textSize = 18f
-        appPowerButton.setOnClickListener {
-            appEnabled = !appEnabled
-            updatePowerUI()
-            status.text = if (appEnabled) "BOOST APP: ON" else "BOOST APP: OFF"
+        val subtitle = TextView(this).apply {
+            text = "FREE PHONE OPTIMIZER • SAFE MODE"
+            textSize = 13f
+            gravity = Gravity.CENTER
+            setPadding(0, 0, 0, 20)
+        }
+        root.addView(subtitle)
+
+        appPowerButton = Button(this).apply {
+            textSize = 18f
+            setOnClickListener {
+                appEnabled = !appEnabled
+                updatePowerUI()
+                status.text = if (appEnabled) "BOOST APP IS ON" else "BOOST APP IS OFF"
+            }
         }
         root.addView(appPowerButton)
 
-        val fakeRootTitle = TextView(this)
-        fakeRootTitle.text = "FAKE ROOT STATUS"
-        fakeRootTitle.textSize = 20f
-        fakeRootTitle.setPadding(0, 18, 0, 5)
-        root.addView(fakeRootTitle)
-
-        fakeRootStatus = TextView(this)
-        fakeRootStatus.textSize = 17f
-        fakeRootStatus.gravity = Gravity.CENTER
-        fakeRootStatus.setPadding(0, 8, 0, 8)
+        addSectionTitle(root, "🔐 FAKE ROOT STATUS")
+        fakeRootStatus = TextView(this).apply {
+            textSize = 17f
+            gravity = Gravity.CENTER
+            setPadding(0, 8, 0, 8)
+        }
         root.addView(fakeRootStatus)
 
-        val fakeRootButton = Button(this)
-        fakeRootButton.text = "TOGGLE FAKE ROOT"
-        fakeRootButton.setOnClickListener {
-            fakeRootEnabled = !fakeRootEnabled
-            updateFakeRootUI()
-            status.text = if (fakeRootEnabled) "FAKE ROOT SIMULATION: ON" else "FAKE ROOT SIMULATION: OFF"
+        val fakeRootButton = Button(this).apply {
+            text = "TOGGLE FAKE ROOT"
+            setOnClickListener {
+                fakeRootEnabled = !fakeRootEnabled
+                updateFakeRootUI()
+                status.text = if (fakeRootEnabled) "FAKE ROOT SIMULATION: ON" else "FAKE ROOT SIMULATION: OFF"
+            }
         }
         root.addView(fakeRootButton)
 
-        status = TextView(this)
-        status.text = "SYSTEM READY"
-        status.textSize = 18f
-        status.gravity = Gravity.CENTER
-        status.setPadding(0, 15, 0, 20)
+        status = TextView(this).apply {
+            text = "● SYSTEM READY"
+            textSize = 18f
+            gravity = Gravity.CENTER
+            setPadding(0, 18, 0, 18)
+        }
         root.addView(status)
 
-        val refresh = Button(this)
-        refresh.text = "REFRESH PHONE STATUS"
-        refresh.setOnClickListener {
-            refreshInfo()
-            status.text = "PHONE STATUS UPDATED"
+        val refresh = Button(this).apply {
+            text = "REFRESH PHONE STATUS"
+            setOnClickListener {
+                refreshInfo()
+                status.text = "✓ PHONE STATUS REFRESHED"
+            }
         }
         root.addView(refresh)
 
-        val ramTitle = TextView(this)
-        ramTitle.text = "RAM STATUS"
-        ramTitle.textSize = 20f
-        root.addView(ramTitle)
-        ram = TextView(this)
-        ram.textSize = 16f
-        root.addView(ram)
+        addInfoCard(root, "🧠 RAM STATUS") { ram = it }
+        addInfoCard(root, "🔋 BATTERY") { battery = it }
+        addInfoCard(root, "💾 STORAGE") { storage = it }
 
-        val batteryTitle = TextView(this)
-        batteryTitle.text = "BATTERY"
-        batteryTitle.textSize = 20f
-        root.addView(batteryTitle)
-        battery = TextView(this)
-        battery.textSize = 16f
-        root.addView(battery)
-
-        val storageTitle = TextView(this)
-        storageTitle.text = "STORAGE"
-        storageTitle.textSize = 20f
-        root.addView(storageTitle)
-        storage = TextView(this)
-        storage.textSize = 16f
-        root.addView(storage)
-
-        val modeTitle = TextView(this)
-        modeTitle.text = "BOOST MODE - SELECT"
-        modeTitle.textSize = 20f
-        modeTitle.setPadding(0, 18, 0, 5)
-        root.addView(modeTitle)
-
+        addSectionTitle(root, "🚀 BOOST MODE — SELECT")
         modeSelector = Spinner(this)
-        val modes = arrayOf("SAFE", "PERFORMANCE", "MAX SAFE")
         val adapter = ArrayAdapter(this, android.R.layout.simple_spinner_item, modes)
         adapter.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item)
         modeSelector.adapter = adapter
         modeSelector.setSelection(0)
-        modeSelector.setOnItemSelectedListener(object : android.widget.AdapterView.OnItemSelectedListener {
-            override fun onItemSelected(parent: android.widget.AdapterView<*>?, view: android.view.View?, position: Int, id: Long) {
+        modeSelector.onItemSelectedListener = object : AdapterView.OnItemSelectedListener {
+            override fun onItemSelected(parent: AdapterView<*>?, view: View?, position: Int, id: Long) {
                 boostMode = position + 1
-                status.text = "SELECTED: ${modes[position]}"
+                if (!boosting) status.text = "SELECTED: ${modes[position]}"
             }
-            override fun onNothingSelected(parent: android.widget.AdapterView<*>?) {}
-        })
+            override fun onNothingSelected(parent: AdapterView<*>?) = Unit
+        }
         root.addView(modeSelector)
 
-        val boost = Button(this)
-        boost.text = "BOOST PHONE"
-        boost.textSize = 19f
-        boost.setOnClickListener {
-            if (!appEnabled) {
-                status.text = "BOOST APP IS OFF"
-                return@setOnClickListener
-            }
-            val selected = modes[boostMode - 1]
-            status.text = "BOOSTING...\nMODE $boostMode - $selected"
-            Thread {
-                try { Thread.sleep(1500) } catch (_: Exception) {}
-                System.gc()
-                runOnUiThread {
-                    refreshInfo()
-                    status.text = "BOOST COMPLETED\nMODE $boostMode - $selected"
-                    Toast.makeText(this, "Boost Completed - $selected", Toast.LENGTH_SHORT).show()
-                }
-            }.start()
+        boostButton = Button(this).apply {
+            text = "⚡ BOOST PHONE"
+            textSize = 19f
+            setOnClickListener { runBoost() }
         }
-        root.addView(boost)
+        root.addView(boostButton)
 
-        val optimize = Button(this)
-        optimize.text = "RAM OPTIMIZE"
-        optimize.setOnClickListener {
-            if (!appEnabled) {
-                status.text = "BOOST APP IS OFF"
-                return@setOnClickListener
+        val optimize = Button(this).apply {
+            text = "🧹 RAM OPTIMIZE"
+            setOnClickListener {
+                if (!canRun()) return@setOnClickListener
+                System.gc()
+                refreshInfo()
+                status.text = "✓ RAM OPTIMIZATION COMPLETED"
+                Toast.makeText(this@MainActivity, "RAM optimization completed", Toast.LENGTH_SHORT).show()
             }
-            System.gc()
-            refreshInfo()
-            status.text = "RAM OPTIMIZATION COMPLETED"
-            Toast.makeText(this, "RAM Optimized", Toast.LENGTH_SHORT).show()
         }
         root.addView(optimize)
 
-        val scan = Button(this)
-        scan.text = "SCAN STORAGE / JUNK"
-        scan.setOnClickListener {
-            if (!appEnabled) {
-                status.text = "BOOST APP IS OFF"
-                return@setOnClickListener
-            }
-            try {
-                val stat = StatFs(Environment.getDataDirectory().path)
-                val total = stat.totalBytes / 1073741824L
-                val free = stat.availableBytes / 1073741824L
-                val used = total - free
-                status.text = "STORAGE SCAN COMPLETED\n\nUSED: $used GB\nFREE: $free GB\nTOTAL: $total GB"
-            } catch (_: Exception) {
-                status.text = "STORAGE SCAN FAILED"
+        val scan = Button(this).apply {
+            text = "🗑️ SCAN STORAGE / JUNK"
+            setOnClickListener {
+                if (!canRun()) return@setOnClickListener
+                scanStorage()
             }
         }
         root.addView(scan)
 
-        val deviceTitle = TextView(this)
-        deviceTitle.text = "DEVICE INFORMATION"
-        deviceTitle.textSize = 20f
-        root.addView(deviceTitle)
-        device = TextView(this)
-        device.textSize = 16f
+        addSectionTitle(root, "📱 DEVICE INFORMATION")
+        device = TextView(this).apply {
+            textSize = 16f
+            setPadding(0, 4, 0, 12)
+        }
         root.addView(device)
 
-        val appInfo = Button(this)
-        appInfo.text = "APP INFORMATION"
-        appInfo.setOnClickListener {
-            status.text = "APP NAME: Redmi 9A Speed Boost\nPACKAGE: com.redmi9aspeedboost\nVERSION: 1.0"
+        val appInfo = Button(this).apply {
+            text = "APP INFORMATION"
+            setOnClickListener {
+                status.text = "APP INFORMATION\n\nNAME: Redmi 9A Speed Boost\nPACKAGE: com.redmi9aspeedboost\nVERSION: 1.0\nMODE: Free"
+            }
         }
         root.addView(appInfo)
 
-        val security = Button(this)
-        security.text = "SECURITY STATUS"
-        security.setOnClickListener {
-            status.text = "SECURITY STATUS\n\nROOT: NOT REQUIRED\nFAKE ROOT: SIMULATION ONLY\nSHIZUKU: OPTIONAL\nSYSTEM PROTECTION: ON"
+        val security = Button(this).apply {
+            text = "🛡️ SECURITY STATUS"
+            setOnClickListener {
+                status.text = "SECURITY STATUS\n\nROOT: NOT REQUIRED\nFAKE ROOT: SIMULATION ONLY\nSHIZUKU: OPTIONAL\nSYSTEM PROTECTION: ON\n\nNo security bypass is performed."
+            }
         }
         root.addView(security)
+
+        val note = TextView(this).apply {
+            text = "\nℹ️ Note: This app performs safe, non-root optimization only. It cannot physically add RAM or obtain real root access."
+            textSize = 13f
+            setPadding(0, 8, 0, 8)
+        }
+        root.addView(note)
 
         setContentView(scroll)
     }
 
+    private fun addSectionTitle(root: LinearLayout, text: String) {
+        root.addView(TextView(this).apply {
+            this.text = text
+            textSize = 20f
+            setPadding(0, 18, 0, 6)
+        })
+    }
+
+    private fun addInfoCard(root: LinearLayout, title: String, assign: (TextView) -> Unit) {
+        addSectionTitle(root, title)
+        val view = TextView(this).apply {
+            textSize = 16f
+            setPadding(0, 2, 0, 8)
+        }
+        root.addView(view)
+        assign(view)
+    }
+
+    private fun canRun(): Boolean {
+        if (!appEnabled) {
+            status.text = "BOOST APP IS OFF"
+            return false
+        }
+        if (boosting) {
+            status.text = "BOOST ALREADY RUNNING"
+            return false
+        }
+        return true
+    }
+
+    private fun runBoost() {
+        if (!canRun()) return
+        boosting = true
+        boostButton.isEnabled = false
+        modeSelector.isEnabled = false
+        val selected = modes[boostMode - 1]
+        status.text = "⚡ BOOSTING...\nMODE $selected"
+
+        Thread {
+            try {
+                when (boostMode) {
+                    1 -> {
+                        System.gc()
+                        Thread.sleep(700)
+                    }
+                    2 -> {
+                        System.gc()
+                        Thread.sleep(1100)
+                        System.runFinalization()
+                    }
+                    3 -> {
+                        System.gc()
+                        Thread.sleep(1400)
+                        System.runFinalization()
+                        System.gc()
+                    }
+                }
+            } catch (_: Exception) { }
+            runOnUiThread {
+                boosting = false
+                boostButton.isEnabled = true
+                modeSelector.isEnabled = true
+                refreshInfo()
+                status.text = "✓ BOOST COMPLETED\nMODE $selected"
+                Toast.makeText(this, "Boost Completed — $selected", Toast.LENGTH_SHORT).show()
+            }
+        }.start()
+    }
+
+    private fun scanStorage() {
+        try {
+            val stat = StatFs(Environment.getDataDirectory().path)
+            val total = stat.totalBytes / 1073741824L
+            val free = stat.availableBytes / 1073741824L
+            val used = total - free
+            status.text = "✓ STORAGE SCAN COMPLETED\n\nUSED: $used GB\nFREE: $free GB\nTOTAL: $total GB\n\nJUNK CLEANUP: SAFE SCAN ONLY"
+        } catch (_: Exception) {
+            status.text = "STORAGE SCAN FAILED"
+        }
+    }
+
     private fun updatePowerUI() {
-        appPowerButton.text = if (appEnabled) "BOOST APP: ON" else "BOOST APP: OFF"
+        appPowerButton.text = if (appEnabled) "🟢 BOOST APP: ON" else "⚪ BOOST APP: OFF"
     }
 
     private fun updateFakeRootUI() {
         fakeRootStatus.text = if (fakeRootEnabled) {
-            "🟢 FAKE ROOT: ON\n(Simulation only — no real root access)"
+            "🟢 FAKE ROOT: ON\n(Simulation only — NO real root access)"
         } else {
-            "⚪ FAKE ROOT: OFF\n(Simulation only)"
+            "⚪ FAKE ROOT: OFF\n(Simulation only — NO real root access)"
         }
     }
 
