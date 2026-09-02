@@ -2,14 +2,6 @@
 
 <manifest xmlns:android="http://schemas.android.com/apk/res/android">
 
-    <!-- Allow the app to request stopping background processes -->
-    <uses-permission
-        android:name="android.permission.KILL_BACKGROUND_PROCESSES" />
-
-    <!-- Required when posting notifications on Android 13+ -->
-    <uses-permission
-        android:name="android.permission.POST_NOTIFICATIONS" />
-
     <application
         android:allowBackup="false"
         android:label="Redmi 9A Speed Boost"
