@@ -10,7 +10,6 @@ import android.net.Uri
 import android.os.*
 import android.provider.Settings
 import android.view.Gravity
-import android.view.View
 import android.widget.*
 import rikka.shizuku.Shizuku
 import java.io.File
@@ -52,7 +51,7 @@ class MainActivity : Activity() {
     private fun performBoost(){if(!enabled){msg("○ BOOST APP IS OFF");return};msg("⚙ BOOSTING…");optimize();if(mode>0&&!shizukuReady)stopNormal();var count=0;if(mode>0&&pro&&shizukuReady)count=stopWithShizuku();refresh("✓ BOOST COMPLETED • ${if(pro)"PRO" else "NORMAL"} • ${if(pro&&shizukuReady)"SHIZUKU" else "NON-ROOT"}${if(count>0)" • $count PROCESSES" else ""}")}
     private fun optimize(){try{Runtime.getRuntime().gc();System.gc();System.runFinalization()}catch(_:Exception){};msg("✓ RAM OPTIMIZE COMPLETED")}
     @Suppress("DEPRECATION") private fun stopNormal(){try{val a=getSystemService(ACTIVITY_SERVICE) as ActivityManager;a.runningAppProcesses?.forEach{p->val x=p.processName;if(x!=packageName&&p.importance>ActivityManager.RunningAppProcessInfo.IMPORTANCE_FOREGROUND)a.killBackgroundProcesses(x)}}catch(_:Exception){}}
-    private fun stopWithShizuku():Int{var count=0;try{val a=getSystemService(ACTIVITY_SERVICE) as ActivityManager;a.runningAppProcesses?.forEach{p->val x=p.processName;if(x!=packageName&&!x.startsWith("com.android.")&&!x.startsWith("com.google.android.gms")&&p.importance>100){val m=Shizuku::class.java.getDeclaredMethod("newProcess",Array<String>::class.java,Array<String>::class.java,String::class.java);m.isAccessible=true;val q=m.invoke(null,arrayOf("sh","-c","cmd activity force-stop $x"),null,null) as Process;q.waitFor();q.destroy();count++}}}catch(_:Exception){};return count}
+    private fun stopWithShizuku():Int{var count=0;try{val a=getSystemService(ACTIVITY_SERVICE) as ActivityManager;a.runningAppProcesses?.forEach{p->val x=p.processName;if(x!=packageName&&!x.startsWith("com.android.")&&!x.startsWith("com.google.android.gms")&&p.importance>100){val m=Shizuku::class.java.getDeclaredMethod("newProcess",Array<String>::class.java,Array<String>::class.java,String::class.java);m.isAccessible=true;m.invoke(null,arrayOf("sh","-c","cmd activity force-stop $x"),null,null);count++}}}catch(_:Exception){};return count}
     private fun scan(){val cache=dirSize(cacheDir)/(1024*1024);val s=android.os.StatFs(Environment.getDataDirectory().path);msg("✓ SCAN DONE • APP CACHE $cache MB • ${s.availableBytes/(1024*1024)} MB FREE")}
     private fun dirSize(f:File):Long{if(!f.exists())return 0;if(f.isFile)return f.length();var z=0L;f.listFiles()?.forEach{z+=dirSize(it)};return z}
     private fun refresh(m:String){ram.text=ramInfo();battery.text="${batteryLevel()}%";storage.text=storageInfo();msg(m)}
