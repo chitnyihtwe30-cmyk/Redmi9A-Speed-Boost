@@ -2,374 +2,65 @@ package com.redmi9aspeedboost
 
 import android.app.Activity
 import android.app.ActivityManager
-import android.content.Intent
-import android.content.IntentFilter
-import android.os.Bundle
-import android.os.Environment
-import android.os.StatFs
-import android.os.Build
+import android.content.*
 import android.graphics.Color
 import android.graphics.drawable.GradientDrawable
+import android.net.Uri
+import android.os.*
+import android.provider.Settings
 import android.view.Gravity
 import android.view.View
 import android.widget.*
 import rikka.shizuku.Shizuku
+import java.io.File
 
 class MainActivity : Activity() {
-    private val bg = Color.rgb(9, 14, 22)
-    private val card = Color.rgb(20, 27, 39)
-    private val card2 = Color.rgb(28, 37, 51)
-    private val accent = Color.rgb(75, 210, 255)
-    private val primaryText = Color.rgb(240, 246, 252)
-    private val muted = Color.rgb(150, 165, 180)
-    private lateinit var appPowerButton: Button
-    private lateinit var status: TextView
-    private lateinit var shizukuStatus: TextView
-    private lateinit var ramValue: TextView
-    private lateinit var batteryValue: TextView
-    private lateinit var storageValue: TextView
-    private var appEnabled = true
-    private var selectedMode = 0
-    private var shizukuReady = false
-    private val shizukuRequestCode = 1001
-
-    private val shizukuPermissionListener = Shizuku.OnRequestPermissionResultListener { requestCode, grantResult ->
-        if (requestCode == shizukuRequestCode) {
-            shizukuReady = grantResult == android.content.pm.PackageManager.PERMISSION_GRANTED
-            updateShizukuUI()
-            status.text = if (shizukuReady) "✓ SHIZUKU CONNECTED" else "⚠ SHIZUKU PERMISSION DENIED"
-        }
+    private val bg=Color.rgb(9,14,22); private val cardColor=Color.rgb(20,27,39); private val card2=Color.rgb(29,38,53)
+    private val accent=Color.rgb(75,210,255); private val fg=Color.rgb(240,246,252); private val muted=Color.rgb(150,165,180)
+    private lateinit var status:TextView; private lateinit var ram:TextView; private lateinit var battery:TextView; private lateinit var storage:TextView; private lateinit var shizuku:TextView
+    private var enabled=true; private var pro=false; private var mode=0; private var shizukuReady=false
+    private val prefs by lazy{getSharedPreferences("settings",0)}; private val requestCode=42
+    private val listener=Shizuku.OnRequestPermissionResultListener{c,r->if(c==requestCode){shizukuReady=r==0;updateShizuku();msg(if(shizukuReady)"✓ Shizuku permission granted" else "⚠ Shizuku permission denied")}}
+    override fun onCreate(b:Bundle?){super.onCreate(b);window.statusBarColor=bg;window.navigationBarColor=bg;Shizuku.addRequestPermissionResultListener(listener);shizukuReady=isReady();build()}
+    override fun onDestroy(){Shizuku.removeRequestPermissionResultListener(listener);super.onDestroy()}
+    override fun onResume(){super.onResume();if(::shizuku.isInitialized){shizukuReady=isReady();updateShizuku()}}
+    private fun box(c:Int,r:Float=20f,s:Int?=null)=GradientDrawable().apply{setColor(c);cornerRadius=r;if(s!=null)setStroke(2,s)}
+    private fun card()=LinearLayout(this).apply{orientation=LinearLayout.VERTICAL;setPadding(16,14,16,14);background=box(cardColor);layoutParams=LinearLayout.LayoutParams(-1,-2).apply{setMargins(0,5,0,5)}}
+    private fun btn(t:String,c:Int=card2)=Button(this).apply{text=t;textSize=14f;setTextColor(fg);isAllCaps=false;background=box(c,16f);stateListAnimator=null;setPadding(10,7,10,7);layoutParams=LinearLayout.LayoutParams(-1,-2).apply{setMargins(3,4,3,4)}}
+    private fun title(t:String)=TextView(this).apply{text=t;textSize=12f;setTextColor(muted);setTypeface(typeface,1);setPadding(4,17,4,5)}
+    private fun line(a:String,b:String)=LinearLayout(this).apply{orientation=LinearLayout.HORIZONTAL;setPadding(0,7,0,7);addView(TextView(this@MainActivity).apply{text=a;textSize=12f;setTextColor(muted);layoutParams=LinearLayout.LayoutParams(0,-2,1f)});addView(TextView(this@MainActivity).apply{text=b;textSize=13f;setTextColor(fg);gravity=Gravity.END;layoutParams=LinearLayout.LayoutParams(0,-2,1.7f)})}
+    private fun build(){
+        val scroll=ScrollView(this).apply{setBackgroundColor(bg)};val root=LinearLayout(this).apply{orientation=LinearLayout.VERTICAL;setPadding(16,12,16,30)};scroll.addView(root)
+        val hero=LinearLayout(this).apply{orientation=LinearLayout.VERTICAL;gravity=Gravity.CENTER;setPadding(16,22,16,22);background=box(Color.rgb(13,29,43),24f,Color.rgb(47,117,150))}
+        hero.addView(TextView(this).apply{text="⚡";textSize=34f});hero.addView(TextView(this).apply{text="REDMI 9A";textSize=27f;setTextColor(fg);setTypeface(typeface,1)});hero.addView(TextView(this).apply{text="SPEED BOOST";textSize=20f;setTextColor(accent);setTypeface(typeface,1)});hero.addView(TextView(this).apply{text="NORMAL + PRO • NON-ROOT + SHIZUKU";textSize=10f;setTextColor(muted)});root.addView(hero)
+        val power=btn("🟢  BOOST APP • ON",Color.rgb(20,88,66));power.setOnClickListener{enabled=!enabled;power.text=if(enabled)"🟢  BOOST APP • ON" else "🔴  BOOST APP • OFF";msg(if(enabled)"● SYSTEM READY" else "○ BOOST APP IS OFF")};root.addView(power)
+        status=TextView(this).apply{text="● SYSTEM READY";textSize=12f;setTextColor(accent);gravity=Gravity.CENTER;setPadding(0,7,0,7)};root.addView(status)
+        root.addView(title("MODE"));val modes=card();val rgMode=RadioGroup(this).apply{orientation=RadioGroup.HORIZONTAL};val n=RadioButton(this).apply{text="NORMAL";setTextColor(fg);id=200};val p=RadioButton(this).apply{text="PRO";setTextColor(fg);id=201};rgMode.addView(n,RadioGroup.LayoutParams(0,-2,1f));rgMode.addView(p,RadioGroup.LayoutParams(0,-2,1f));n.isChecked=true;rgMode.setOnCheckedChangeListener{_,id->pro=id==201};modes.addView(rgMode);modes.addView(TextView(this).apply{text="Normal works without Shizuku. Pro adds optional advanced actions; Boost still works without Shizuku.";textSize=11f;setTextColor(muted)});root.addView(modes)
+        root.addView(title("PHONE STATUS"));val monitor=card();val rr=line("RAM",ramInfo());val bb=line("BATTERY","${batteryLevel()}%");val ss=line("STORAGE",storageInfo());ram=rr.getChildAt(1) as TextView;battery=bb.getChildAt(1) as TextView;storage=ss.getChildAt(1) as TextView;monitor.addView(rr);monitor.addView(bb);monitor.addView(ss);val rf=btn("↻  REFRESH STATUS");rf.setOnClickListener{refresh("✓ STATUS REFRESHED")};monitor.addView(rf);root.addView(monitor)
+        root.addView(title("BOOST CONTROL"));val boost=card();val modeText=TextView(this).apply{text="Selected: SAFE";textSize=14f;setTextColor(accent);gravity=Gravity.CENTER};boost.addView(modeText);val rg=RadioGroup(this).apply{orientation=RadioGroup.HORIZONTAL};listOf("SAFE","PERFORMANCE","MAX SAFE").forEachIndexed{i,label->val x=RadioButton(this).apply{text=label;setTextColor(fg);id=300+i};rg.addView(x,RadioGroup.LayoutParams(0,-2,1f));if(i==0)x.isChecked=true};rg.setOnCheckedChangeListener{_,id->mode=id-300;modeText.text="Selected: ${listOf("SAFE","PERFORMANCE","MAX SAFE")[mode]}"};boost.addView(rg);val now=btn("⚡  BOOST NOW",Color.rgb(18,83,112));now.textSize=17f;now.setOnClickListener{performBoost()};boost.addView(now);root.addView(boost)
+        root.addView(title("SMART TOOLS"));val tools=card();val rm=btn("🧹  RAM OPTIMIZE");rm.setOnClickListener{optimize()};tools.addView(rm);val sc=btn("🔍  SCAN STORAGE / JUNK");sc.setOnClickListener{scan()};tools.addView(sc);val am=btn("📱  APP MANAGEMENT");am.setOnClickListener{appManager()};tools.addView(am);root.addView(tools)
+        root.addView(title("SHIZUKU"));val sh=card();shizuku=TextView(this).apply{gravity=Gravity.CENTER;textSize=14f;setPadding(0,3,0,8)};sh.addView(shizuku);val req=btn("🔐  REQUEST SHIZUKU PERMISSION");req.setOnClickListener{requestShizuku()};sh.addView(req);val help=btn("💬  SHIZUKU CHAT / HELP");help.setOnClickListener{shizukuHelp()};sh.addView(help);root.addView(sh);updateShizuku()
+        root.addView(title("BATTERY & BACKGROUND"));val pc=card();val bat=btn("🔋  BATTERY OPTIMIZATION SETTINGS");bat.setOnClickListener{try{startActivity(Intent(Settings.ACTION_BATTERY_SAVER_SETTINGS))}catch(_:Exception){startActivity(Intent(Settings.ACTION_SETTINGS))}};pc.addView(bat);val bg=btn("⚙  APP BATTERY / BACKGROUND SETTINGS");bg.setOnClickListener{try{startActivity(Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS,Uri.parse("package:$packageName")))}catch(_:Exception){}};pc.addView(bg);root.addView(pc)
+        root.addView(title("CUSTOM APP ICON"));val ic=card();ic.addView(TextView(this).apply{text="Choose an image for the app's custom icon preview. Android does not allow arbitrary launcher-icon replacement at runtime through ordinary APIs.";textSize=11f;setTextColor(muted)});val pick=btn("🖼  CHOOSE IMAGE");pick.setOnClickListener{startActivityForResult(Intent(Intent.ACTION_OPEN_DOCUMENT).apply{type="image/*";addCategory(Intent.CATEGORY_OPENABLE)},900)};ic.addView(pick);val reset=btn("↺  RESET ICON");reset.setOnClickListener{prefs.edit().remove("icon").apply();msg("✓ CUSTOM ICON RESET")};ic.addView(reset);root.addView(ic)
+        root.addView(title("SETTINGS & INFO"));val set=card();val auto=Switch(this).apply{text="Auto optimization";setTextColor(fg);isChecked=prefs.getBoolean("auto",false);setOnCheckedChangeListener{_,v->prefs.edit().putBoolean("auto",v).apply()}};set.addView(auto);val notif=Switch(this).apply{text="Notifications";setTextColor(fg);isChecked=prefs.getBoolean("notif",true);setOnCheckedChangeListener{_,v->prefs.edit().putBoolean("notif",v).apply()}};set.addView(notif);val about=btn("ℹ  ABOUT / DEVICE & SECURITY");about.setOnClickListener{about()};set.addView(about);root.addView(set)
+        root.addView(TextView(this).apply{text="REAL NON-ROOT OPERATION • No fake root. Shizuku is used only after permission is granted.";textSize=10f;setTextColor(muted);gravity=Gravity.CENTER;setPadding(8,20,8,5)});setContentView(scroll)
     }
-
-    override fun onCreate(savedInstanceState: Bundle?) {
-        super.onCreate(savedInstanceState)
-        window.statusBarColor = bg
-        window.navigationBarColor = bg
-        Shizuku.addRequestPermissionResultListener(shizukuPermissionListener)
-        shizukuReady = isShizukuReady()
-        createUI()
-    }
-
-    override fun onDestroy() {
-        Shizuku.removeRequestPermissionResultListener(shizukuPermissionListener)
-        super.onDestroy()
-    }
-
-    override fun onResume() {
-        super.onResume()
-        if (::shizukuStatus.isInitialized) {
-            shizukuReady = isShizukuReady()
-            updateShizukuUI()
-        }
-    }
-
-    private fun rounded(color: Int, radius: Float, stroke: Int? = null): GradientDrawable = GradientDrawable().apply {
-        setColor(color)
-        cornerRadius = radius
-        if (stroke != null) setStroke(2, stroke)
-    }
-
-    private fun marginView(v: View, h: Int, vertical: Int) {
-        v.layoutParams = LinearLayout.LayoutParams(-1, -2).apply { setMargins(h, vertical, h, vertical) }
-    }
-
-    private fun section(root: LinearLayout, title: String) {
-        root.addView(TextView(this).apply {
-            text = title
-            textSize = 12f
-            setTextColor(muted)
-            setTypeface(typeface, android.graphics.Typeface.BOLD)
-            setPadding(5, 18, 5, 7)
-        })
-    }
-
-    private fun makeCard(): LinearLayout = LinearLayout(this).apply {
-        orientation = LinearLayout.VERTICAL
-        setPadding(18, 16, 18, 16)
-        background = rounded(card, 22f, Color.rgb(35, 44, 59))
-        marginView(this, 6, 6)
-    }
-
-    private fun makeButton(label: String, color: Int = card2, size: Float = 15f): Button = Button(this).apply {
-        text = label
-        textSize = size
-        setTextColor(primaryText)
-        isAllCaps = false
-        background = rounded(color, 16f)
-        stateListAnimator = null
-        setPadding(12, 8, 12, 8)
-        marginView(this, 5, 5)
-    }
-
-    private fun createUI() {
-        val scroll = ScrollView(this).apply { setBackgroundColor(bg); clipToPadding = false }
-        val root = LinearLayout(this).apply {
-            orientation = LinearLayout.VERTICAL
-            setPadding(16, 14, 16, 30)
-            setBackgroundColor(bg)
-        }
-        scroll.addView(root)
-
-        val hero = LinearLayout(this).apply {
-            orientation = LinearLayout.VERTICAL
-            gravity = Gravity.CENTER
-            setPadding(18, 24, 18, 24)
-            background = rounded(Color.rgb(13, 29, 43), 26f, Color.rgb(47, 117, 150))
-            marginView(this, 0, 10)
-        }
-        hero.addView(TextView(this).apply { text = "⚡"; textSize = 32f; gravity = Gravity.CENTER })
-        hero.addView(TextView(this).apply { text = "REDMI 9A"; textSize = 28f; setTextColor(primaryText); gravity = Gravity.CENTER; setTypeface(typeface, android.graphics.Typeface.BOLD) })
-        hero.addView(TextView(this).apply { text = "SPEED BOOST"; textSize = 20f; setTextColor(accent); gravity = Gravity.CENTER; setTypeface(typeface, android.graphics.Typeface.BOLD) })
-        hero.addView(TextView(this).apply { text = "NON-ROOT + SHIZUKU"; textSize = 10f; setTextColor(muted); gravity = Gravity.CENTER; setPadding(0, 6, 0, 0) })
-        root.addView(hero)
-
-        appPowerButton = makeButton("🟢  BOOST APP  •  ON", Color.rgb(20, 88, 66), 17f)
-        appPowerButton.setOnClickListener {
-            appEnabled = !appEnabled
-            updatePowerUI()
-            status.text = if (appEnabled) "● SYSTEM READY" else "○ BOOST APP IS OFF"
-        }
-        root.addView(appPowerButton)
-
-        status = TextView(this).apply { text = "● SYSTEM READY"; textSize = 12f; setTextColor(accent); gravity = Gravity.CENTER; setPadding(0, 8, 0, 8) }
-        root.addView(status)
-
-        section(root, "SHIZUKU")
-        val shizukuCard = makeCard()
-        shizukuStatus = TextView(this).apply {
-            textSize = 14f
-            setTextColor(accent)
-            gravity = Gravity.CENTER
-            setPadding(0, 4, 0, 8)
-        }
-        shizukuCard.addView(shizukuStatus)
-        val shizukuButton = makeButton("🔐  REQUEST SHIZUKU PERMISSION", Color.rgb(50, 64, 91), 14f)
-        shizukuButton.setOnClickListener { requestShizukuPermission() }
-        shizukuCard.addView(shizukuButton)
-        root.addView(shizukuCard)
-        updateShizukuUI()
-
-        section(root, "PHONE STATUS")
-        val monitor = makeCard()
-        val ramLine = infoLine("RAM", ramInfo())
-        val batteryLine = infoLine("BATTERY", "${batteryLevel()}%")
-        val storageLine = infoLine("STORAGE", storageInfo())
-        ramValue = ramLine.getChildAt(1) as TextView
-        batteryValue = batteryLine.getChildAt(1) as TextView
-        storageValue = storageLine.getChildAt(1) as TextView
-        monitor.addView(ramLine)
-        monitor.addView(batteryLine)
-        monitor.addView(storageLine)
-        val refresh = makeButton("↻  REFRESH PHONE STATUS")
-        refresh.setOnClickListener { refreshStatus("● PHONE STATUS REFRESHED ✓") }
-        monitor.addView(refresh)
-        root.addView(monitor)
-
-        section(root, "BOOST CONTROL")
-        val modes = makeCard()
-        val modeText = TextView(this).apply { text = "Selected: MODE 1 • SAFE"; textSize = 14f; setTextColor(accent); gravity = Gravity.CENTER; setPadding(0, 4, 0, 8) }
-        modes.addView(modeText)
-        val row = LinearLayout(this).apply { orientation = LinearLayout.HORIZONTAL; gravity = Gravity.CENTER }
-        listOf("1 • SAFE", "2 • PERFORMANCE", "3 • MAX SAFE").forEachIndexed { i, label ->
-            val b = makeButton(label, if (i == 0) Color.rgb(24, 72, 93) else card2, 12f)
-            b.layoutParams = LinearLayout.LayoutParams(0, -2, 1f).apply { setMargins(4, 4, 4, 4) }
-            b.setOnClickListener {
-                selectedMode = i
-                modeText.text = "Selected: MODE ${i + 1} • ${label.substringAfter("• ").trim()}"
-                status.text = "● MODE ${i + 1} SELECTED"
-            }
-            row.addView(b)
-        }
-        modes.addView(row)
-        val boost = makeButton("⚡  BOOST NOW", Color.rgb(18, 83, 112), 17f)
-        boost.setOnClickListener { performBoost() }
-        modes.addView(boost)
-        root.addView(modes)
-
-        section(root, "SMART TOOLS")
-        val tools = makeCard()
-        val ram = makeButton("🧹  RAM OPTIMIZE")
-        ram.setOnClickListener { optimizeMemory() }
-        tools.addView(ram)
-        val scan = makeButton("🔍  SCAN STORAGE / JUNK")
-        scan.setOnClickListener { scanStorage() }
-        tools.addView(scan)
-        root.addView(tools)
-
-        section(root, "DEVICE & SECURITY")
-        val details = makeCard()
-        details.addView(infoLine("DEVICE", "${Build.MANUFACTURER} ${Build.MODEL}"))
-        details.addView(infoLine("ANDROID", "${Build.VERSION.RELEASE} • API ${Build.VERSION.SDK_INT}"))
-        details.addView(infoLine("APP", "Redmi 9A Speed Boost v1.2"))
-        details.addView(infoLine("SECURITY", if (Build.VERSION.SECURITY_PATCH.isNotEmpty()) "PATCH ${Build.VERSION.SECURITY_PATCH}" else "STANDARD"))
-        root.addView(details)
-
-        root.addView(TextView(this).apply {
-            text = "REAL NON-ROOT + SHIZUKU OPTIMIZATION\nShizuku enables privileged shell operations when the user grants permission. Without Shizuku, the app falls back to Android's normal APIs."
-            textSize = 10f
-            setTextColor(muted)
-            gravity = Gravity.CENTER
-            setPadding(10, 22, 10, 10)
-        })
-        setContentView(scroll)
-    }
-
-    private fun isShizukuReady(): Boolean {
-        return try {
-            Shizuku.pingBinder() && Shizuku.checkSelfPermission() == android.content.pm.PackageManager.PERMISSION_GRANTED
-        } catch (_: Exception) {
-            false
-        }
-    }
-
-    private fun requestShizukuPermission() {
-        try {
-            if (!Shizuku.pingBinder()) {
-                shizukuReady = false
-                updateShizukuUI()
-                status.text = "⚠ START SHIZUKU FIRST"
-                return
-            }
-            if (Shizuku.isPreV11()) {
-                status.text = "⚠ SHIZUKU VERSION TOO OLD"
-                return
-            }
-            if (Shizuku.checkSelfPermission() != android.content.pm.PackageManager.PERMISSION_GRANTED) {
-                Shizuku.requestPermission(shizukuRequestCode)
-            } else {
-                shizukuReady = true
-                updateShizukuUI()
-                status.text = "✓ SHIZUKU ALREADY AUTHORIZED"
-            }
-        } catch (_: Exception) {
-            status.text = "⚠ SHIZUKU REQUEST FAILED"
-        }
-    }
-
-    private fun updateShizukuUI() {
-        if (!::shizukuStatus.isInitialized) return
-        shizukuStatus.text = if (shizukuReady) "● CONNECTED • PRIVILEGED MODE READY" else "○ NOT CONNECTED • NON-ROOT FALLBACK"
-        shizukuStatus.setTextColor(if (shizukuReady) Color.rgb(80, 220, 150) else muted)
-    }
-
-    private fun performBoost() {
-        if (!appEnabled) { status.text = "○ BOOST APP IS OFF"; return }
-        status.text = "⚙ BOOSTING…"
-        releaseAppMemory()
-        var shizukuCount = 0
-        if (selectedMode >= 1 && shizukuReady) shizukuCount = stopBackgroundAppsWithShizuku()
-        if (selectedMode >= 1 && !shizukuReady) stopBackgroundApps()
-        refreshStatus(if (shizukuReady && selectedMode >= 1) "✓ BOOST COMPLETED • MODE ${selectedMode + 1} • SHIZUKU • ${shizukuCount} PROCESSES" else "✓ BOOST COMPLETED • MODE ${selectedMode + 1} • NON-ROOT")
-    }
-
-    private fun optimizeMemory() {
-        if (!appEnabled) { status.text = "○ BOOST APP IS OFF"; return }
-        releaseAppMemory()
-        refreshStatus("✓ RAM OPTIMIZE COMPLETED • APP MEMORY RELEASED")
-    }
-
-    private fun releaseAppMemory() {
-        try {
-            window.decorView.rootView.clearAnimation()
-            Runtime.getRuntime().gc()
-            System.gc()
-            System.runFinalization()
-        } catch (_: Exception) { }
-    }
-
-    @Suppress("DEPRECATION")
-    private fun stopBackgroundApps() {
-        val am = getSystemService(ACTIVITY_SERVICE) as ActivityManager
-        try {
-            val running = am.runningAppProcesses ?: return
-            for (process in running) {
-                val name = process.processName ?: continue
-                if (name != packageName && process.importance > ActivityManager.RunningAppProcessInfo.IMPORTANCE_FOREGROUND) {
-                    am.killBackgroundProcesses(name)
-                }
-            }
-        } catch (_: SecurityException) {
-            status.text = "⚠ BACKGROUND CLEANUP LIMITED BY ANDROID"
-        } catch (_: Exception) { }
-    }
-
-    private fun stopBackgroundAppsWithShizuku(): Int {
-        return try {
-            if (!Shizuku.pingBinder() || Shizuku.checkSelfPermission() != android.content.pm.PackageManager.PERMISSION_GRANTED) return 0
-            val am = getSystemService(ACTIVITY_SERVICE) as ActivityManager
-            val running = am.runningAppProcesses ?: return 0
-            var count = 0
-            for (process in running) {
-                val name = process.processName ?: continue
-                if (name == packageName || name.startsWith("com.android.") || name.startsWith("com.google.android.gms")) continue
-                if (process.importance > ActivityManager.RunningAppProcessInfo.IMPORTANCE_FOREGROUND) {
-                    val p = Shizuku.newProcess(arrayOf("sh", "-c", "cmd activity force-stop $name"), null, null)
-                    p.waitFor()
-                    p.destroy()
-                    count++
-                }
-            }
-            count
-        } catch (_: Exception) {
-            status.text = "⚠ SHIZUKU CLEANUP FAILED"
-            0
-        }
-    }
-
-    private fun scanStorage() {
-        val dataDir = Environment.getDataDirectory()
-        val cacheBytes = directorySize(cacheDir)
-        val dataFs = StatFs(dataDir.path)
-        val free = dataFs.availableBytes / (1024L * 1024L)
-        status.text = "✓ SCAN DONE • APP CACHE ${cacheBytes / (1024 * 1024)} MB • ${free} MB FREE"
-    }
-
-    private fun directorySize(file: java.io.File): Long {
-        if (!file.exists()) return 0L
-        if (file.isFile) return file.length()
-        var total = 0L
-        file.listFiles()?.forEach { total += directorySize(it) }
-        return total
-    }
-
-    private fun refreshStatus(message: String) {
-        ramValue.text = ramInfo()
-        batteryValue.text = "${batteryLevel()}%"
-        storageValue.text = storageInfo()
-        status.text = message
-    }
-
-    private fun infoLine(label: String, value: String): LinearLayout = LinearLayout(this).apply {
-        orientation = LinearLayout.HORIZONTAL
-        gravity = Gravity.CENTER_VERTICAL
-        setPadding(0, 7, 0, 7)
-        addView(TextView(this@MainActivity).apply { text = label; textSize = 12f; setTextColor(muted); layoutParams = LinearLayout.LayoutParams(0, -2, 1f) })
-        addView(TextView(this@MainActivity).apply { text = value; textSize = 13f; setTextColor(primaryText); gravity = Gravity.END; layoutParams = LinearLayout.LayoutParams(0, -2, 1.6f) })
-    }
-
-    private fun updatePowerUI() {
-        appPowerButton.text = if (appEnabled) "🟢  BOOST APP  •  ON" else "🔴  BOOST APP  •  OFF"
-        appPowerButton.background = rounded(if (appEnabled) Color.rgb(20, 88, 66) else Color.rgb(78, 35, 43), 16f)
-    }
-
-    private fun ramInfo(): String {
-        val mi = ActivityManager.MemoryInfo()
-        (getSystemService(ACTIVITY_SERVICE) as ActivityManager).getMemoryInfo(mi)
-        val used = (mi.totalMem - mi.availMem) / (1024 * 1024)
-        return "${used} MB used / ${mi.totalMem / (1024 * 1024)} MB"
-    }
-
-    private fun storageInfo(): String {
-        val s = StatFs(Environment.getDataDirectory().path)
-        val total = s.totalBytes / (1024L * 1024L * 1024L)
-        val free = s.availableBytes / (1024L * 1024L * 1024L)
-        return "$free GB free / $total GB"
-    }
-
-    private fun batteryLevel(): Int {
-        val i = registerReceiver(null, IntentFilter(Intent.ACTION_BATTERY_CHANGED))
-        val level = i?.getIntExtra("level", 0) ?: 0
-        val scale = i?.getIntExtra("scale", 100) ?: 100
-        return if (scale > 0) (level * 100 / scale) else 0
-    }
+    private fun isReady()=try{Shizuku.pingBinder()&&Shizuku.checkSelfPermission()==0}catch(_:Exception){false}
+    private fun updateShizuku(){if(!::shizuku.isInitialized)return;shizuku.text=if(shizukuReady)"● CONNECTED • PRO FEATURES READY" else "○ NOT CONNECTED • NORMAL FALLBACK";shizuku.setTextColor(if(shizukuReady)Color.rgb(80,220,150) else muted)}
+    private fun requestShizuku(){try{if(!Shizuku.pingBinder()){msg("⚠ Start Shizuku first");return};if(Shizuku.checkSelfPermission()!=0)Shizuku.requestPermission(requestCode)else{shizukuReady=true;updateShizuku();msg("✓ Shizuku already authorized")}}catch(_:Exception){msg("⚠ Shizuku request failed")}}
+    private fun performBoost(){if(!enabled){msg("○ BOOST APP IS OFF");return};msg("⚙ BOOSTING…");optimize();if(mode>0&&!shizukuReady)stopNormal();var count=0;if(mode>0&&pro&&shizukuReady)count=stopWithShizuku();refresh("✓ BOOST COMPLETED • ${if(pro)"PRO" else "NORMAL"} • ${if(pro&&shizukuReady)"SHIZUKU" else "NON-ROOT"}${if(count>0)" • $count PROCESSES" else ""}")}
+    private fun optimize(){try{Runtime.getRuntime().gc();System.gc();System.runFinalization()}catch(_:Exception){};msg("✓ RAM OPTIMIZE COMPLETED")}
+    @Suppress("DEPRECATION") private fun stopNormal(){try{val a=getSystemService(ACTIVITY_SERVICE) as ActivityManager;a.runningAppProcesses?.forEach{p->val x=p.processName;if(x!=packageName&&p.importance>ActivityManager.RunningAppProcessInfo.IMPORTANCE_FOREGROUND)a.killBackgroundProcesses(x)}}catch(_:Exception){}}
+    private fun stopWithShizuku():Int{var count=0;try{val a=getSystemService(ACTIVITY_SERVICE) as ActivityManager;a.runningAppProcesses?.forEach{p->val x=p.processName;if(x!=packageName&&!x.startsWith("com.android.")&&!x.startsWith("com.google.android.gms")&&p.importance>100){val q=Shizuku.newProcess(arrayOf("sh","-c","cmd activity force-stop $x"),null,null);q.waitFor();q.destroy();count++}}}catch(_:Exception){};return count}
+    private fun scan(){val cache=dirSize(cacheDir)/(1024*1024);val s=android.os.StatFs(Environment.getDataDirectory().path);msg("✓ SCAN DONE • APP CACHE $cache MB • ${s.availableBytes/(1024*1024)} MB FREE")}
+    private fun dirSize(f:File):Long{if(!f.exists())return 0;if(f.isFile)return f.length();var z=0L;f.listFiles()?.forEach{z+=dirSize(it)};return z}
+    private fun refresh(m:String){ram.text=ramInfo();battery.text="${batteryLevel()}%";storage.text=storageInfo();msg(m)}
+    private fun msg(s:String){if(::status.isInitialized)status.text=s}
+    private fun ramInfo():String{val m=ActivityManager.MemoryInfo();(getSystemService(ACTIVITY_SERVICE) as ActivityManager).getMemoryInfo(m);return "${(m.totalMem-m.availMem)/(1024*1024)} MB used / ${m.totalMem/(1024*1024)} MB"}
+    private fun storageInfo():String{val s=android.os.StatFs(Environment.getDataDirectory().path);return "${s.availableBytes/(1024L*1024*1024)} GB free / ${s.totalBytes/(1024L*1024*1024)} GB"}
+    private fun batteryLevel():Int{val i=registerReceiver(null,IntentFilter(Intent.ACTION_BATTERY_CHANGED));val l=i?.getIntExtra("level",0)?:0;val sc=i?.getIntExtra("scale",100)?:100;return if(sc>0)l*100/sc else 0}
+    private fun shizukuHelp(){AlertDialog.Builder(this).setTitle("Shizuku Help").setMessage("1. Install and start Shizuku.\n2. Return here and request permission.\n3. Grant access when prompted.\n4. If disconnected, restart Shizuku and request permission again.\n\nNormal mode and basic Boost work without Shizuku.").setPositiveButton("OK",null).show()}
+    private fun appManager(){val pm=packageManager;val list=pm.getInstalledApplications(0).filter{it.packageName!=packageName}.sortedBy{pm.getApplicationLabel(it).toString().lowercase()};val labels=list.take(60).map{pm.getApplicationLabel(it).toString()+"\n"+it.packageName};AlertDialog.Builder(this).setTitle("Installed Apps (${list.size})").setItems(labels.toTypedArray()){_,i->val a=list[i];AlertDialog.Builder(this).setTitle(pm.getApplicationLabel(a)).setMessage("Package: ${a.packageName}\n\nExact per-app RAM/battery values are restricted by Android for ordinary apps. System settings provide the authoritative controls.").setPositiveButton("OPEN SETTINGS"){_,_->try{startActivity(Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS,Uri.parse("package:${a.packageName}")))}catch(_:Exception){}}.setNegativeButton("CLOSE",null).show()}.setNegativeButton("CLOSE",null).show()}
+    private fun about(){AlertDialog.Builder(this).setTitle("Redmi 9A Speed Boost").setMessage("Version 2.0\n\nNormal: no Shizuku required.\nPro: optional Shizuku for supported advanced actions.\n\nDevice: ${Build.MANUFACTURER} ${Build.MODEL}\nAndroid: ${Build.VERSION.RELEASE} (API ${Build.VERSION.SDK_INT})\nSecurity patch: ${Build.VERSION.SECURITY_PATCH}").setPositiveButton("OK",null).show()}
+    override fun onActivityResult(r:Int,c:Int,d:Intent?){super.onActivityResult(r,c,d);if(r==900&&c==RESULT_OK&&d?.data!=null){prefs.edit().putString("icon",d.data.toString()).apply();msg("✓ CUSTOM ICON SELECTED • PREVIEW SAVED")}}
 }
