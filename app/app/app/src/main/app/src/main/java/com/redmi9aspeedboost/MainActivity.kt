@@ -13,6 +13,7 @@ import android.graphics.drawable.GradientDrawable
 import android.view.Gravity
 import android.view.View
 import android.widget.*
+import rikka.shizuku.Shizuku
 
 class MainActivity : Activity() {
     private val bg = Color.rgb(9, 14, 22)
@@ -23,17 +24,43 @@ class MainActivity : Activity() {
     private val muted = Color.rgb(150, 165, 180)
     private lateinit var appPowerButton: Button
     private lateinit var status: TextView
+    private lateinit var shizukuStatus: TextView
     private lateinit var ramValue: TextView
     private lateinit var batteryValue: TextView
     private lateinit var storageValue: TextView
     private var appEnabled = true
     private var selectedMode = 0
+    private var shizukuReady = false
+    private val shizukuRequestCode = 1001
+
+    private val shizukuPermissionListener = Shizuku.OnRequestPermissionResultListener { requestCode, grantResult ->
+        if (requestCode == shizukuRequestCode) {
+            shizukuReady = grantResult == android.content.pm.PackageManager.PERMISSION_GRANTED
+            updateShizukuUI()
+            status.text = if (shizukuReady) "✓ SHIZUKU CONNECTED" else "⚠ SHIZUKU PERMISSION DENIED"
+        }
+    }
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         window.statusBarColor = bg
         window.navigationBarColor = bg
+        Shizuku.addRequestPermissionResultListener(shizukuPermissionListener)
+        shizukuReady = isShizukuReady()
         createUI()
+    }
+
+    override fun onDestroy() {
+        Shizuku.removeRequestPermissionResultListener(shizukuPermissionListener)
+        super.onDestroy()
+    }
+
+    override fun onResume() {
+        super.onResume()
+        if (::shizukuStatus.isInitialized) {
+            shizukuReady = isShizukuReady()
+            updateShizukuUI()
+        }
     }
 
     private fun rounded(color: Int, radius: Float, stroke: Int? = null): GradientDrawable = GradientDrawable().apply {
@@ -93,7 +120,7 @@ class MainActivity : Activity() {
         hero.addView(TextView(this).apply { text = "⚡"; textSize = 32f; gravity = Gravity.CENTER })
         hero.addView(TextView(this).apply { text = "REDMI 9A"; textSize = 28f; setTextColor(primaryText); gravity = Gravity.CENTER; setTypeface(typeface, android.graphics.Typeface.BOLD) })
         hero.addView(TextView(this).apply { text = "SPEED BOOST"; textSize = 20f; setTextColor(accent); gravity = Gravity.CENTER; setTypeface(typeface, android.graphics.Typeface.BOLD) })
-        hero.addView(TextView(this).apply { text = "REAL NON-ROOT TOOLS"; textSize = 10f; setTextColor(muted); gravity = Gravity.CENTER; setPadding(0, 6, 0, 0) })
+        hero.addView(TextView(this).apply { text = "NON-ROOT + SHIZUKU"; textSize = 10f; setTextColor(muted); gravity = Gravity.CENTER; setPadding(0, 6, 0, 0) })
         root.addView(hero)
 
         appPowerButton = makeButton("🟢  BOOST APP  •  ON", Color.rgb(20, 88, 66), 17f)
@@ -106,6 +133,21 @@ class MainActivity : Activity() {
 
         status = TextView(this).apply { text = "● SYSTEM READY"; textSize = 12f; setTextColor(accent); gravity = Gravity.CENTER; setPadding(0, 8, 0, 8) }
         root.addView(status)
+
+        section(root, "SHIZUKU")
+        val shizukuCard = makeCard()
+        shizukuStatus = TextView(this).apply {
+            textSize = 14f
+            setTextColor(accent)
+            gravity = Gravity.CENTER
+            setPadding(0, 4, 0, 8)
+        }
+        shizukuCard.addView(shizukuStatus)
+        val shizukuButton = makeButton("🔐  REQUEST SHIZUKU PERMISSION", Color.rgb(50, 64, 91), 14f)
+        shizukuButton.setOnClickListener { requestShizukuPermission() }
+        shizukuCard.addView(shizukuButton)
+        root.addView(shizukuCard)
+        updateShizukuUI()
 
         section(root, "PHONE STATUS")
         val monitor = makeCard()
@@ -158,12 +200,12 @@ class MainActivity : Activity() {
         val details = makeCard()
         details.addView(infoLine("DEVICE", "${Build.MANUFACTURER} ${Build.MODEL}"))
         details.addView(infoLine("ANDROID", "${Build.VERSION.RELEASE} • API ${Build.VERSION.SDK_INT}"))
-        details.addView(infoLine("APP", "Redmi 9A Speed Boost v1.1"))
+        details.addView(infoLine("APP", "Redmi 9A Speed Boost v1.2"))
         details.addView(infoLine("SECURITY", if (Build.VERSION.SECURITY_PATCH.isNotEmpty()) "PATCH ${Build.VERSION.SECURITY_PATCH}" else "STANDARD"))
         root.addView(details)
 
         root.addView(TextView(this).apply {
-            text = "REAL NON-ROOT OPTIMIZATION\nCleans this app's memory, releases its caches, refreshes device stats and can stop selected background apps. Android does not allow third-party apps to control kernel RAM or CPU clocks without privileged access."
+            text = "REAL NON-ROOT + SHIZUKU OPTIMIZATION\nShizuku enables privileged shell operations when the user grants permission. Without Shizuku, the app falls back to Android's normal APIs."
             textSize = 10f
             setTextColor(muted)
             gravity = Gravity.CENTER
@@ -172,12 +214,52 @@ class MainActivity : Activity() {
         setContentView(scroll)
     }
 
+    private fun isShizukuReady(): Boolean {
+        return try {
+            Shizuku.pingBinder() && Shizuku.checkSelfPermission() == android.content.pm.PackageManager.PERMISSION_GRANTED
+        } catch (_: Exception) {
+            false
+        }
+    }
+
+    private fun requestShizukuPermission() {
+        try {
+            if (!Shizuku.pingBinder()) {
+                shizukuReady = false
+                updateShizukuUI()
+                status.text = "⚠ START SHIZUKU FIRST"
+                return
+            }
+            if (Shizuku.isPreV11()) {
+                status.text = "⚠ SHIZUKU VERSION TOO OLD"
+                return
+            }
+            if (Shizuku.checkSelfPermission() != android.content.pm.PackageManager.PERMISSION_GRANTED) {
+                Shizuku.requestPermission(shizukuRequestCode)
+            } else {
+                shizukuReady = true
+                updateShizukuUI()
+                status.text = "✓ SHIZUKU ALREADY AUTHORIZED"
+            }
+        } catch (_: Exception) {
+            status.text = "⚠ SHIZUKU REQUEST FAILED"
+        }
+    }
+
+    private fun updateShizukuUI() {
+        if (!::shizukuStatus.isInitialized) return
+        shizukuStatus.text = if (shizukuReady) "● CONNECTED • PRIVILEGED MODE READY" else "○ NOT CONNECTED • NON-ROOT FALLBACK"
+        shizukuStatus.setTextColor(if (shizukuReady) Color.rgb(80, 220, 150) else muted)
+    }
+
     private fun performBoost() {
         if (!appEnabled) { status.text = "○ BOOST APP IS OFF"; return }
         status.text = "⚙ BOOSTING…"
         releaseAppMemory()
-        if (selectedMode >= 1) stopBackgroundApps()
-        refreshStatus("✓ BOOST COMPLETED • MODE ${selectedMode + 1} • NON-ROOT")
+        var shizukuCount = 0
+        if (selectedMode >= 1 && shizukuReady) shizukuCount = stopBackgroundAppsWithShizuku()
+        if (selectedMode >= 1 && !shizukuReady) stopBackgroundApps()
+        refreshStatus(if (shizukuReady && selectedMode >= 1) "✓ BOOST COMPLETED • MODE ${selectedMode + 1} • SHIZUKU • ${shizukuCount} PROCESSES" else "✓ BOOST COMPLETED • MODE ${selectedMode + 1} • NON-ROOT")
     }
 
     private fun optimizeMemory() {
@@ -211,9 +293,31 @@ class MainActivity : Activity() {
         } catch (_: Exception) { }
     }
 
+    private fun stopBackgroundAppsWithShizuku(): Int {
+        return try {
+            if (!Shizuku.pingBinder() || Shizuku.checkSelfPermission() != android.content.pm.PackageManager.PERMISSION_GRANTED) return 0
+            val am = getSystemService(ACTIVITY_SERVICE) as ActivityManager
+            val running = am.runningAppProcesses ?: return 0
+            var count = 0
+            for (process in running) {
+                val name = process.processName ?: continue
+                if (name == packageName || name.startsWith("com.android.") || name.startsWith("com.google.android.gms")) continue
+                if (process.importance > ActivityManager.RunningAppProcessInfo.IMPORTANCE_FOREGROUND) {
+                    val p = Shizuku.newProcess(arrayOf("sh", "-c", "cmd activity force-stop $name"), null, null)
+                    p.waitFor()
+                    p.destroy()
+                    count++
+                }
+            }
+            count
+        } catch (_: Exception) {
+            status.text = "⚠ SHIZUKU CLEANUP FAILED"
+            0
+        }
+    }
+
     private fun scanStorage() {
         val dataDir = Environment.getDataDirectory()
-        val cacheDir = cacheDir
         val cacheBytes = directorySize(cacheDir)
         val dataFs = StatFs(dataDir.path)
         val free = dataFs.availableBytes / (1024L * 1024L)
